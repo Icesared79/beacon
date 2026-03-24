@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beacon — Demo Walkthrough</title>
+<style>
+  /* ── Print / PDF settings ── */
+  @page { size: letter; margin: 0.6in 0.7in; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { page-break-after: always; break-after: page; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+    .page:last-child { page-break-after: avoid; }
+  }
+
+  /* ── Fonts ── */
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  /* ── Tokens ── */
+  :root {
+    --bg:         #0C0A09;
+    --surface-1:  #121009;
+    --surface-2:  #1A1714;
+    --surface-3:  #221F1B;
+    --surface-4:  #2A2622;
+    --text:       #F0EBE3;
+    --text-2:     #9E9082;
+    --text-muted: #625850;
+    --red:        #C0392B;
+    --red-bright: #E8540A;
+    --teal:       #2A9D8F;
+    --teal-bright:#3DBFB0;
+    --success:    #6DB88A;
+    --warning:    #D4A843;
+    --error:      #E07070;
+    --border:     rgba(192,57,43,0.12);
+    --border-sub: rgba(240,235,227,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #18161a;
+    color: var(--text);
+    line-height: 1.5;
+    font-size: 10.5pt;
+  }
+
+  .page {
+    width: 8.5in; min-height: 10.2in;
+    background: var(--bg);
+    margin: 0.5in auto;
+    padding: 0.5in 0.55in;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Page header strip ── */
+  .page-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px; margin-bottom: 18px;
+  }
+  .page-header .logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 14pt;
+    color: var(--red); letter-spacing: 2px;
+  }
+  .page-header .logo span { color: var(--text-2); font-weight: 400; font-size: 9pt; letter-spacing: 0.5px; margin-left: 8px; }
+  .page-header .page-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt; color: var(--text-muted);
+  }
+  .page-header .subtitle {
+    font-size: 8.5pt; color: var(--text-2); letter-spacing: 0.3px;
+  }
+
+  /* ── Typography ── */
+  h1 { font-family: 'Space Grotesk', sans-serif; font-size: 18pt; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  h2 { font-family: 'Space Grotesk', sans-serif; font-size: 12pt; font-weight: 600; color: var(--text); margin-bottom: 6px; margin-top: 14px; }
+  h3 { font-family: 'Space Grotesk', sans-serif; font-size: 10pt; font-weight: 600; color: var(--teal); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  p { color: var(--text-2); font-size: 9.5pt; margin-bottom: 6px; line-height: 1.55; }
+  .intro { font-size: 10pt; color: var(--text); margin-bottom: 14px; border-left: 3px solid var(--red); padding-left: 10px; }
+
+  /* ── Mockup frame ── */
+  .mockup {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .mockup-bar {
+    background: var(--surface-2);
+    height: 22px; display: flex; align-items: center;
+    padding: 0 10px; gap: 5px;
+    border-bottom: 1px solid var(--border-sub);
+  }
+  .mockup-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .mockup-dot.r { background: #E07070; } .mockup-dot.y { background: #D4A843; } .mockup-dot.g { background: #6DB88A; }
+  .mockup-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7pt; color: var(--text-muted);
+    margin-left: 10px;
+  }
+  .mockup-body { padding: 12px 14px; min-height: 80px; position: relative; }
+
+  /* ── Annotation callouts ── */
+  .callout {
+    position: absolute;
+    display: flex; align-items: flex-start; gap: 5px;
+    z-index: 10;
+  }
+  .callout-num {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--red); color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .callout-line {
+    width: 24px; height: 1px;
+    background: var(--red); margin-top: 9px; flex-shrink: 0;
+  }
+  .callout-text {
+    font-size: 7.5pt; color: var(--text);
+    background: rgba(192,57,43,0.12);
+    border: 1px solid rgba(192,57,43,0.25);
+    border-radius: 4px; padding: 3px 6px;
+    line-height: 1.35; max-width: 160px;
+  }
+
+  /* ── Inline annotations list ── */
+  .annotations { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-top: 8px; }
+  .ann {
+    display: flex; align-items: flex-start; gap: 6px;
+    padding: 5px 8px;
+    background: var(--surface-2);
+    border-radius: 5px;
+    border-left: 3px solid var(--red);
+  }
+  .ann .num {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--red); color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7pt; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .ann .desc { font-size: 8pt; color: var(--text-2); line-height: 1.4; }
+  .ann .desc strong { color: var(--text); font-weight: 600; }
+
+  /* ── Wireframe elements ── */
+  .wf-sidebar {
+    width: 44px; background: var(--surface-2);
+    border-right: 1px solid var(--border-sub);
+    display: flex; flex-direction: column;
+    align-items: center; padding: 8px 0; gap: 12px;
+    position: absolute; left: 0; top: 0; bottom: 0;
+  }
+  .wf-icon { width: 20px; height: 20px; border-radius: 4px; background: var(--surface-4); }
+  .wf-icon.active { background: rgba(192,57,43,0.2); border: 1px solid rgba(192,57,43,0.35); }
+
+  .wf-header-bar {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-sub);
+    height: 30px; display: flex; align-items: center;
+    padding: 0 10px; justify-content: space-between;
+  }
+  .wf-logo { font-family: 'Space Grotesk', sans-serif; font-size: 9pt; font-weight: 700; color: var(--red); letter-spacing: 1.5px; }
+  .wf-dots { display: flex; gap: 4px; }
+  .wf-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .wf-cards { display: flex; gap: 8px; margin-bottom: 10px; }
+  .wf-card {
+    flex: 1; background: var(--surface-2);
+    border: 1px solid var(--border-sub);
+    border-radius: 6px; padding: 8px 10px;
+  }
+  .wf-card-label { font-size: 6.5pt; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+  .wf-card-value { font-family: 'JetBrains Mono', monospace; font-size: 14pt; font-weight: 600; }
+  .wf-card-value.red { color: var(--red); }
+  .wf-card-value.teal { color: var(--teal); }
+  .wf-card-value.text { color: var(--text); }
+  .wf-card-sub { font-size: 6.5pt; color: var(--text-muted); margin-top: 1px; }
+
+  /* Map grid */
+  .wf-map { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; }
+  .wf-state {
+    aspect-ratio: 1.3;
+    border-radius: 3px; font-family: 'JetBrains Mono', monospace;
+    font-size: 5.5pt; display: flex; align-items: center; justify-content: center;
+    color: var(--text-2);
+  }
+  .heat-0 { background: var(--surface-3); color: var(--text-muted); }
+  .heat-1 { background: rgba(192,57,43,0.15); }
+  .heat-2 { background: rgba(192,57,43,0.30); }
+  .heat-3 { background: rgba(192,57,43,0.50); color: var(--text); }
+  .heat-4 { background: rgba(192,57,43,0.70); color: #fff; }
+  .heat-5 { background: var(--red); color: #fff; font-weight: 600; }
+
+  /* Prospect table */
+  .wf-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  .wf-table th {
+    text-align: left; padding: 5px 6px;
+    font-size: 6.5pt; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border-sub);
+    font-weight: 500;
+  }
+  .wf-table td { padding: 5px 6px; color: var(--text-2); border-bottom: 1px solid var(--border-sub); }
+  .wf-table tr:hover td { background: rgba(192,57,43,0.04); }
+
+  .pill {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: 6.5pt; font-weight: 500; letter-spacing: 0.3px;
+  }
+  .pill-red { background: rgba(192,57,43,0.15); color: var(--error); border: 1px solid rgba(192,57,43,0.25); }
+  .pill-amber { background: rgba(139,105,20,0.15); color: var(--warning); border: 1px solid rgba(139,105,20,0.25); }
+  .pill-teal { background: rgba(42,157,143,0.12); color: var(--teal-bright); border: 1px solid rgba(42,157,143,0.22); }
+  .pill-gray { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border-sub); }
+
+  .score {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    font-size: 9pt;
+  }
+  .score-high { color: var(--error); }
+  .score-med { color: var(--warning); }
+  .score-low { color: var(--teal); }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 20px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 6px; top: 4px; bottom: 4px;
+    width: 2px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 8px; }
+  .tl-dot {
+    position: absolute; left: -20px; top: 4px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--bg);
+  }
+  .tl-dot.red { background: var(--red); }
+  .tl-dot.amber { background: var(--warning); }
+  .tl-dot.teal { background: var(--teal); }
+  .tl-dot.gray { background: var(--text-muted); }
+  .tl-date { font-family: 'JetBrains Mono', monospace; font-size: 6.5pt; color: var(--text-muted); }
+  .tl-title { font-size: 8pt; color: var(--text); font-weight: 500; }
+  .tl-desc { font-size: 7.5pt; color: var(--text-2); }
+
+  /* Chart placeholder */
+  .wf-chart {
+    background: var(--surface-2); border: 1px solid var(--border-sub);
+    border-radius: 6px; padding: 8px; position: relative;
+    height: 90px; overflow: hidden;
+  }
+  .wf-chart-label { font-size: 6.5pt; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+
+  /* Filter bar */
+  .wf-filters { display: flex; gap: 6px; margin-bottom: 8px; }
+  .wf-filter {
+    background: var(--surface-3); border: 1px solid var(--border-sub);
+    border-radius: 4px; padding: 3px 8px;
+    font-size: 7pt; color: var(--text-2);
+    display: flex; align-items: center; gap: 3px;
+  }
+  .wf-filter.active { border-color: rgba(192,57,43,0.3); color: var(--text); }
+  .wf-filter .arrow { font-size: 6pt; color: var(--text-muted); }
+
+  /* Legend */
+  .legend { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 7pt; color: var(--text-2); }
+  .legend-swatch { width: 12px; height: 8px; border-radius: 2px; }
+
+  /* Misc */
+  .flex { display: flex; }
+  .gap-sm { gap: 8px; }
+  .gap-md { gap: 14px; }
+  .col { display: flex; flex-direction: column; }
+  .flex-1 { flex: 1; }
+  .mt-sm { margin-top: 6px; }
+  .mt-md { margin-top: 12px; }
+  .mb-sm { margin-bottom: 6px; }
+  .mb-md { margin-bottom: 12px; }
+
+  /* Cover badge */
+  .confidential {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7pt; letter-spacing: 2px;
+    color: var(--text-muted); text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 2px 10px; border-radius: 3px;
+    display: inline-block; margin-top: 4px;
+  }
+
+  .footer {
+    position: absolute; bottom: 0.4in; left: 0.55in; right: 0.55in;
+    font-size: 7pt; color: var(--text-muted);
+    border-top: 1px solid var(--border-sub);
+    padding-top: 6px;
+    display: flex; justify-content: space-between;
+  }
+
+  /* Property header card */
+  .prop-header {
+    background: var(--surface-2); border: 1px solid var(--border-sub);
+    border-radius: 6px; padding: 10px 12px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .prop-address { font-family: 'Space Grotesk', sans-serif; font-size: 11pt; font-weight: 600; color: var(--text); }
+  .prop-meta { font-size: 7.5pt; color: var(--text-2); margin-top: 2px; }
+  .prop-score-ring {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 3px solid var(--red);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14pt; font-weight: 700; color: var(--red);
+  }
+
+  .signal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .signal-card {
+    background: var(--surface-3); border-radius: 5px; padding: 6px 8px;
+    border-left: 3px solid var(--text-muted);
+  }
+  .signal-card.active { border-left-color: var(--red); }
+  .signal-card .sig-name { font-size: 7.5pt; font-weight: 600; color: var(--text); }
+  .signal-card .sig-detail { font-size: 7pt; color: var(--text-2); }
+  .signal-card .sig-date { font-size: 6.5pt; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* SVG chart line */
+  .chart-svg { width: 100%; height: 60px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!--  PAGE 1 — Login & Dashboard Overview                                   -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="logo">BEACON <span>Demo Walkthrough</span></div>
+      <div class="subtitle">Red Planet Data — Housing Counselor Intelligence Platform</div>
+    </div>
+    <div style="text-align:right">
+      <div class="page-num">01 / 04</div>
+      <div class="confidential">CONFIDENTIAL</div>
+    </div>
+  </div>
+
+  <h1>Login &amp; Dashboard Overview</h1>
+  <p class="intro">The first thing a housing counselor sees after logging in — a single screen that answers: <em>"Where do I focus today?"</em></p>
+
+  <!-- Login mockup -->
+  <h2>Sign In</h2>
+  <div class="mockup" style="max-width:340px; margin-bottom:14px;">
+    <div class="mockup-bar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span class="mockup-url">beacon.redplanetdata.com/login</span>
+    </div>
+    <div class="mockup-body" style="text-align:center; padding: 20px 30px;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16pt; color:var(--red); letter-spacing:2px; margin-bottom:12px;">BEACON</div>
+      <div style="font-size:8pt; color:var(--text-muted); margin-bottom:14px;">Housing counselor intelligence</div>
+      <div style="background:var(--surface-3); border:1px solid var(--border-sub); border-radius:5px; padding:6px 10px; margin-bottom:8px; text-align:left;">
+        <span style="font-size:7pt; color:var(--text-muted);">Email</span>
+      </div>
+      <div style="background:var(--surface-3); border:1px solid var(--border-sub); border-radius:5px; padding:6px 10px; margin-bottom:12px; text-align:left;">
+        <span style="font-size:7pt; color:var(--text-muted);">Password</span>
+      </div>
+      <div style="background:var(--red); border-radius:5px; padding:6px; color:#fff; font-size:8.5pt; font-weight:600; letter-spacing:0.5px;">SIGN IN</div>
+    </div>
+  </div>
+  <p>Role-based access via Supabase Auth. Each counselor's view is scoped to their assigned office or region. SSO integration available for agency deployments.</p>
+
+  <!-- Dashboard mockup -->
+  <h2>Dashboard Overview</h2>
+  <div class="mockup" style="min-height: 220px;">
+    <div class="mockup-bar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span class="mockup-url">beacon.redplanetdata.com/dashboard</span>
+    </div>
+    <div class="mockup-body" style="padding-left:56px;">
+      <!-- Sidebar -->
+      <div class="wf-sidebar">
+        <div style="font-family:'Space Grotesk',sans-serif; font-size:7pt; font-weight:700; color:var(--red); letter-spacing:1px; margin-bottom:6px;">B</div>
+        <div class="wf-icon active"></div>
+        <div class="wf-icon"></div>
+        <div class="wf-icon"></div>
+        <div class="wf-icon"></div>
+        <div class="wf-icon"></div>
+      </div>
+
+      <!-- Top header -->
+      <div class="wf-header-bar" style="margin: -12px -14px 10px -14px; padding: 0 10px;">
+        <div class="wf-logo">BEACON</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:8pt; color:var(--text);">
+          <span style="color:var(--teal);">12,847</span>
+          <span style="color:var(--text-muted); font-size:6.5pt;"> active prospects</span>
+        </div>
+        <div class="wf-dots">
+          <div class="wf-status-dot" style="background:var(--success);"></div>
+          <div class="wf-status-dot" style="background:var(--success);"></div>
+          <div class="wf-status-dot" style="background:var(--warning);"></div>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="wf-cards">
+        <div class="wf-card">
+          <div class="wf-card-label">New This Week</div>
+          <div class="wf-card-value red">342</div>
+          <div class="wf-card-sub">↑ 18% vs last week</div>
+        </div>
+        <div class="wf-card">
+          <div class="wf-card-label">High Distress</div>
+          <div class="wf-card-value red">1,208</div>
+          <div class="wf-card-sub">Score ≥ 75</div>
+        </div>
+        <div class="wf-card">
+          <div class="wf-card-label">In Outreach</div>
+          <div class="wf-card-value teal">487</div>
+          <div class="wf-card-sub">Active counselor pipeline</div>
+        </div>
+        <div class="wf-card">
+          <div class="wf-card-label">Signals Today</div>
+          <div class="wf-card-value text">89</div>
+          <div class="wf-card-sub">Across 6 data sources</div>
+        </div>
+      </div>
+
+      <!-- Mini map + activity -->
+      <div class="flex gap-sm">
+        <div style="flex:1.2; background:var(--surface-2); border:1px solid var(--border-sub); border-radius:6px; padding:6px 8px;">
+          <div style="font-size:6.5pt; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:4px;">Distress Concentration</div>
+          <div style="display:flex; gap:2px; flex-wrap:wrap;">
+            <div class="wf-state heat-3" style="width:18px;height:14px;font-size:5pt;">CT</div>
+            <div class="wf-state heat-5" style="width:18px;height:14px;font-size:5pt;">NJ</div>
+            <div class="wf-state heat-4" style="width:18px;height:14px;font-size:5pt;">PA</div>
+            <div class="wf-state heat-2" style="width:18px;height:14px;font-size:5pt;">NY</div>
+            <div class="wf-state heat-5" style="width:18px;height:14px;font-size:5pt;">OH</div>
+            <div class="wf-state heat-3" style="width:18px;height:14px;font-size:5pt;">FL</div>
+            <div class="wf-state heat-1" style="width:18px;height:14px;font-size:5pt;">TX</div>
+            <div class="wf-state heat-4" style="width:18px;height:14px;font-size:5pt;">MD</div>
+            <div class="wf-state heat-2" style="width:18px;height:14px;font-size:5pt;">GA</div>
+            <div class="wf-state heat-0" style="width:18px;height:14px;font-size:5pt;">CA</div>
+            <div class="wf-state heat-1" style="width:18px;height:14px;font-size:5pt;">IL</div>
+            <div class="wf-state heat-3" style="width:18px;height:14px;font-size:5pt;">VA</div>
+          </div>
+        </div>
+        <div style="flex:1; background:var(--surface-2); border:1px solid var(--border-sub); border-radius:6px; padding:6px 8px;">
+          <div style="font-size:6.5pt; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:4px;">Recent Activity</div>
+          <div style="font-size:7pt; color:var(--text-2);">
+            <div style="margin-bottom:3px;"><span style="color:var(--success);">●</span> 47 new lis pendens — NJ (2h ago)</div>
+            <div style="margin-bottom:3px;"><span style="color:var(--warning);">●</span> Tax lien batch — OH (4h ago)</div>
+            <div><span style="color:var(--teal-bright);">●</span> Code violations refreshed — CT (6h ago)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotations">
+    <div class="ann"><div class="num">1</div><div class="desc"><strong>Stat cards</strong> — real-time KPIs scoped to counselor's office. Mono font for data, warm labels for context.</div></div>
+    <div class="ann"><div class="num">2</div><div class="desc"><strong>Sidebar nav</strong> — collapsed by default. Expands on hover to reveal: Dashboard, Map, Prospects, Signals, Settings.</div></div>
+    <div class="ann"><div class="num">3</div><div class="desc"><strong>Status dots</strong> — green = data pipeline healthy, amber = stale source detected. Animate with a subtle "breathe" pulse.</div></div>
+    <div class="ann"><div class="num">4</div><div class="desc"><strong>Mini map</strong> — at-a-glance distress heatmap. Click any state to drill into the full market map (Page 2).</div></div>
+    <div class="ann"><div class="num">5</div><div class="desc"><strong>Activity feed</strong> — last 24h of data arrivals. Counselor knows exactly when fresh signals landed.</div></div>
+    <div class="ann"><div class="num">6</div><div class="desc"><strong>Header total</strong> — teal-colored active prospect count updates in real time via animated counter.</div></div>
+  </div>
+
+  <div class="footer">
+    <span>Red Planet Data, Inc. — Confidential</span>
+    <span>Beacon v1.0 — Demo Walkthrough — March 2026</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!--  PAGE 2 — The Distress Map                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="logo">BEACON <span>Demo Walkthrough</span></div>
+      <div class="subtitle">Red Planet Data — Housing Counselor Intelligence Platform</div>
+    </div>
+    <div style="text-align:right">
+      <div class="page-num">02 / 04</div>
+      <div class="confidential">CONFIDENTIAL</div>
+    </div>
+  </div>
+
+  <h1>The Distress Map</h1>
+  <p class="intro">A geographic heat map of distress signal concentration. Counselors use this to identify where need is greatest and allocate outreach resources accordingly.</p>
+
+  <div class="mockup" style="min-height:250px;">
+    <div class="mockup-bar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span class="mockup-url">beacon.redplanetdata.com/map</span>
+    </div>
+    <div class="mockup-body">
+      <!-- Filters -->
+      <div class="wf-filters">
+        <div class="wf-filter active">Office: Newark, NJ <span class="arrow">▼</span></div>
+        <div class="wf-filter">Signal Type: All <span class="arrow">▼</span></div>
+        <div class="wf-filter">Time Range: 90 Days <span class="arrow">▼</span></div>
+        <div class="wf-filter" style="border-color:rgba(42,157,143,0.3); color:var(--teal);">↻ Refresh</div>
+      </div>
+
+      <!-- State grid map -->
+      <div style="display:grid; grid-template-columns: repeat(11, 1fr); gap: 3px; max-width:480px; margin: 0 auto;">
+        <!-- Row 1 -->
+        <div class="wf-state heat-0" style="grid-column:11;">ME</div>
+        <!-- Row 2 -->
+        <div class="wf-state heat-0" style="grid-column:1;">WA</div>
+        <div class="wf-state heat-0" style="grid-column:2;">MT</div>
+        <div class="wf-state heat-0" style="grid-column:3;">ND</div>
+        <div class="wf-state heat-1" style="grid-column:4;">MN</div>
+        <div class="wf-state heat-1" style="grid-column:5;">WI</div>
+        <div class="wf-state heat-0" style="grid-column:6;">MI</div>
+        <div class="wf-state heat-2" style="grid-column:8;">NY</div>
+        <div class="wf-state heat-0" style="grid-column:9;">VT</div>
+        <div class="wf-state heat-0" style="grid-column:10;">NH</div>
+        <div class="wf-state heat-2" style="grid-column:11;">MA</div>
+        <!-- Row 3 -->
+        <div class="wf-state heat-0" style="grid-column:1;">OR</div>
+        <div class="wf-state heat-0" style="grid-column:2;">ID</div>
+        <div class="wf-state heat-0" style="grid-column:3;">SD</div>
+        <div class="wf-state heat-1" style="grid-column:4;">IA</div>
+        <div class="wf-state heat-2" style="grid-column:5;">IL</div>
+        <div class="wf-state heat-2" style="grid-column:6;">IN</div>
+        <div class="wf-state heat-4" style="grid-column:7;">OH</div>
+        <div class="wf-state heat-4" style="grid-column:8;">PA</div>
+        <div class="wf-state heat-5" style="grid-column:9;">NJ</div>
+        <div class="wf-state heat-3" style="grid-column:10;">CT</div>
+        <div class="wf-state heat-1" style="grid-column:11;">RI</div>
+        <!-- Row 4 -->
+        <div class="wf-state heat-0" style="grid-column:1;">CA</div>
+        <div class="wf-state heat-0" style="grid-column:2;">NV</div>
+        <div class="wf-state heat-0" style="grid-column:3;">NE</div>
+        <div class="wf-state heat-1" style="grid-column:4;">MO</div>
+        <div class="wf-state heat-1" style="grid-column:5;">KY</div>
+        <div class="wf-state heat-1" style="grid-column:6;">WV</div>
+        <div class="wf-state heat-3" style="grid-column:7;">VA</div>
+        <div class="wf-state heat-4" style="grid-column:8;">MD</div>
+        <div class="wf-state heat-2" style="grid-column:9;">DE</div>
+        <!-- Row 5 -->
+        <div class="wf-state heat-0" style="grid-column:2;">AZ</div>
+        <div class="wf-state heat-0" style="grid-column:3;">KS</div>
+        <div class="wf-state heat-1" style="grid-column:4;">AR</div>
+        <div class="wf-state heat-2" style="grid-column:5;">TN</div>
+        <div class="wf-state heat-2" style="grid-column:6;">NC</div>
+        <div class="wf-state heat-1" style="grid-column:7;">SC</div>
+        <!-- Row 6 -->
+        <div class="wf-state heat-0" style="grid-column:2;">NM</div>
+        <div class="wf-state heat-1" style="grid-column:3;">TX</div>
+        <div class="wf-state heat-1" style="grid-column:4;">LA</div>
+        <div class="wf-state heat-1" style="grid-column:5;">MS</div>
+        <div class="wf-state heat-1" style="grid-column:6;">AL</div>
+        <div class="wf-state heat-3" style="grid-column:7;">GA</div>
+        <div class="wf-state heat-3" style="grid-column:8;">FL</div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend" style="justify-content:center; margin-top:8px;">
+        <div class="legend-item"><div class="legend-swatch heat-0"></div> No data</div>
+        <div class="legend-item"><div class="legend-swatch heat-1"></div> Low</div>
+        <div class="legend-item"><div class="legend-swatch heat-2"></div> Moderate</div>
+        <div class="legend-item"><div class="legend-swatch heat-3"></div> Elevated</div>
+        <div class="legend-item"><div class="legend-swatch heat-4"></div> High</div>
+        <div class="legend-item"><div class="legend-swatch heat-5"></div> Critical</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Reading the Heat Map</h2>
+  <div class="annotations">
+    <div class="ann"><div class="num">1</div><div class="desc"><strong>Color intensity</strong> = signal concentration. Deeper red means more overlapping distress signals detected in that state.</div></div>
+    <div class="ann"><div class="num">2</div><div class="desc"><strong>Office filter</strong> — scopes the map to a counselor's assigned geography. Multi-select available for regional managers.</div></div>
+    <div class="ann"><div class="num">3</div><div class="desc"><strong>Signal type filter</strong> — isolate specific distress types: foreclosure filings, tax liens, code violations, utility shutoffs, etc.</div></div>
+    <div class="ann"><div class="num">4</div><div class="desc"><strong>Click a state</strong> to drill down into county-level view. County tiles show the same heat scale at higher resolution.</div></div>
+    <div class="ann"><div class="num">5</div><div class="desc"><strong>Time range</strong> — adjust the lookback window. 30/60/90 day views show whether distress is accelerating or cooling.</div></div>
+    <div class="ann"><div class="num">6</div><div class="desc"><strong>NJ shows "Critical"</strong> — this counselor's home state has the highest concentration. 5+ overlapping signal types active.</div></div>
+  </div>
+
+  <h2>What the Colors Mean</h2>
+  <p>Each intensity level corresponds to the number of <strong>distinct distress signal types</strong> detected within the lookback window:</p>
+  <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:6px; margin-top:6px;">
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px;">
+      <div class="flex gap-sm" style="align-items:center;"><div class="legend-swatch heat-1" style="width:16px;height:12px;"></div><strong style="font-size:8pt; color:var(--text);">Low (1 signal)</strong></div>
+      <p style="font-size:7.5pt; margin:3px 0 0;">Single indicator present. Monitor but not urgent.</p>
+    </div>
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px;">
+      <div class="flex gap-sm" style="align-items:center;"><div class="legend-swatch heat-3" style="width:16px;height:12px;"></div><strong style="font-size:8pt; color:var(--text);">Elevated (3 signals)</strong></div>
+      <p style="font-size:7.5pt; margin:3px 0 0;">Multiple distress types. Proactive outreach recommended.</p>
+    </div>
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px;">
+      <div class="flex gap-sm" style="align-items:center;"><div class="legend-swatch heat-5" style="width:16px;height:12px;"></div><strong style="font-size:8pt; color:var(--text);">Critical (5+ signals)</strong></div>
+      <p style="font-size:7.5pt; margin:3px 0 0;">Severe overlap. Immediate counselor intervention needed.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Red Planet Data, Inc. — Confidential</span>
+    <span>Beacon v1.0 — Demo Walkthrough — March 2026</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!--  PAGE 3 — The Prospect Feed                                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="logo">BEACON <span>Demo Walkthrough</span></div>
+      <div class="subtitle">Red Planet Data — Housing Counselor Intelligence Platform</div>
+    </div>
+    <div style="text-align:right">
+      <div class="page-num">03 / 04</div>
+      <div class="confidential">CONFIDENTIAL</div>
+    </div>
+  </div>
+
+  <h1>The Prospect Feed</h1>
+  <p class="intro">A prioritized list of properties showing distress signals. The compound score surfaces the most urgent cases first so counselors focus where intervention has the highest impact.</p>
+
+  <div class="mockup">
+    <div class="mockup-bar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span class="mockup-url">beacon.redplanetdata.com/prospects</span>
+    </div>
+    <div class="mockup-body">
+      <!-- Search + filters -->
+      <div class="flex gap-sm mb-sm" style="align-items:center;">
+        <div style="flex:1; background:var(--surface-3); border:1px solid var(--border-sub); border-radius:5px; padding:5px 8px; font-size:7.5pt; color:var(--text-muted);">
+          🔍 Search address, owner, or parcel ID…
+        </div>
+        <div class="wf-filter active">Score: ≥ 50 <span class="arrow">▼</span></div>
+        <div class="wf-filter">Status: All <span class="arrow">▼</span></div>
+        <div class="wf-filter">County: Essex <span class="arrow">▼</span></div>
+        <div class="wf-filter" style="border-color:rgba(192,57,43,0.3); color:var(--red);">Export CSV ↓</div>
+      </div>
+
+      <!-- Table -->
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th style="width:30px;">Score</th>
+            <th>Address</th>
+            <th>Owner</th>
+            <th>Signals</th>
+            <th style="width:70px;">Status</th>
+            <th style="width:55px;">Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="score score-high">92</span></td>
+            <td style="color:var(--text); font-weight:500;">142 Bergen Ave, Newark NJ</td>
+            <td>Maria Gonzalez</td>
+            <td>
+              <span class="pill pill-red">Foreclosure</span>
+              <span class="pill pill-red">Tax Lien</span>
+              <span class="pill pill-amber">Code Viol.</span>
+            </td>
+            <td><span class="pill pill-gray">New</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:7pt;">2h ago</td>
+          </tr>
+          <tr>
+            <td><span class="score score-high">87</span></td>
+            <td style="color:var(--text); font-weight:500;">508 S Orange Ave, Newark NJ</td>
+            <td>James & Tanya Williams</td>
+            <td>
+              <span class="pill pill-red">Lis Pendens</span>
+              <span class="pill pill-amber">Utility Shutoff</span>
+            </td>
+            <td><span class="pill pill-teal">Contacted</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:7pt;">5h ago</td>
+          </tr>
+          <tr>
+            <td><span class="score score-high">81</span></td>
+            <td style="color:var(--text); font-weight:500;">23 Hawthorne Ave, E. Orange NJ</td>
+            <td>Robert Chen</td>
+            <td>
+              <span class="pill pill-red">Tax Lien</span>
+              <span class="pill pill-amber">Vacancy</span>
+              <span class="pill pill-amber">Delinquency</span>
+            </td>
+            <td><span class="pill pill-gray">New</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:7pt;">1d ago</td>
+          </tr>
+          <tr>
+            <td><span class="score score-med">68</span></td>
+            <td style="color:var(--text); font-weight:500;">1101 Clinton Ave, Irvington NJ</td>
+            <td>Dorothy & Earl Washington</td>
+            <td>
+              <span class="pill pill-amber">Code Viol.</span>
+              <span class="pill pill-amber">Delinquency</span>
+            </td>
+            <td><span class="pill pill-teal">In Review</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:7pt;">1d ago</td>
+          </tr>
+          <tr>
+            <td><span class="score score-med">54</span></td>
+            <td style="color:var(--text); font-weight:500;">780 Springfield Ave, Newark NJ</td>
+            <td>Ahmed Al-Rashid</td>
+            <td>
+              <span class="pill pill-amber">Delinquency</span>
+            </td>
+            <td><span class="pill pill-amber">Escalated</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:7pt;">3d ago</td>
+          </tr>
+          <tr>
+            <td><span class="score score-low">31</span></td>
+            <td style="color:var(--text); font-weight:500;">45 Park St, Montclair NJ</td>
+            <td>Linda Petrović</td>
+            <td>
+              <span class="pill pill-teal">Monitor</span>
+            </td>
+            <td><span class="pill pill-teal">Resolved</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:7pt;">5d ago</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="font-size:7pt; color:var(--text-muted); margin-top:6px; text-align:right;">
+        Showing 1–6 of 1,208 prospects &nbsp;|&nbsp; ← 1 2 3 … 202 →
+      </div>
+    </div>
+  </div>
+
+  <h2>Key Elements</h2>
+  <div class="annotations">
+    <div class="ann"><div class="num">1</div><div class="desc"><strong>Compound Score</strong> — 0–100 severity rating. Combines signal count, signal severity, recency, and property value. Red ≥ 75, amber 50–74, teal &lt; 50.</div></div>
+    <div class="ann"><div class="num">2</div><div class="desc"><strong>Signal pills</strong> — color-coded by severity. Red = legal/imminent action. Amber = warning indicators. Teal = monitoring only.</div></div>
+    <div class="ann"><div class="num">3</div><div class="desc"><strong>Status workflow</strong> — New → Contacted → In Review → Escalated → Resolved. Counselors update as they engage with the homeowner.</div></div>
+    <div class="ann"><div class="num">4</div><div class="desc"><strong>Filters</strong> — narrow by score threshold, status, county, signal type. Saved filter presets per counselor.</div></div>
+    <div class="ann"><div class="num">5</div><div class="desc"><strong>Search</strong> — full-text across address, owner name, and parcel ID. Results update as you type.</div></div>
+    <div class="ann"><div class="num">6</div><div class="desc"><strong>Export</strong> — download filtered results as CSV for reporting or offline outreach planning. Respects active filters.</div></div>
+  </div>
+
+  <h2>Score Breakdown</h2>
+  <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:6px;">
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px; text-align:center;">
+      <div style="font-size:7pt; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Signal Count</div>
+      <div style="font-size:8pt; color:var(--text); margin-top:2px;">More signals = higher weight</div>
+    </div>
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px; text-align:center;">
+      <div style="font-size:7pt; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Severity</div>
+      <div style="font-size:8pt; color:var(--text); margin-top:2px;">Foreclosure > delinquency</div>
+    </div>
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px; text-align:center;">
+      <div style="font-size:7pt; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Recency</div>
+      <div style="font-size:8pt; color:var(--text); margin-top:2px;">Recent signals score higher</div>
+    </div>
+    <div style="background:var(--surface-2); border-radius:5px; padding:6px 8px; text-align:center;">
+      <div style="font-size:7pt; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Property Value</div>
+      <div style="font-size:8pt; color:var(--text); margin-top:2px;">Preservable equity at risk</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Red Planet Data, Inc. — Confidential</span>
+    <span>Beacon v1.0 — Demo Walkthrough — March 2026</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!--  PAGE 4 — The Signal Timeline                                          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="logo">BEACON <span>Demo Walkthrough</span></div>
+      <div class="subtitle">Red Planet Data — Housing Counselor Intelligence Platform</div>
+    </div>
+    <div style="text-align:right">
+      <div class="page-num">04 / 04</div>
+      <div class="confidential">CONFIDENTIAL</div>
+    </div>
+  </div>
+
+  <h1>The Signal Timeline</h1>
+  <p class="intro">The individual property view — the counselor's preparation screen before making contact. Shows every signal, its history, and why it matters for the conversation.</p>
+
+  <div class="mockup">
+    <div class="mockup-bar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span class="mockup-url">beacon.redplanetdata.com/prospects/142-bergen-ave-newark-nj</span>
+    </div>
+    <div class="mockup-body">
+      <!-- Property header -->
+      <div class="prop-header">
+        <div>
+          <div class="prop-address">142 Bergen Ave, Newark NJ 07108</div>
+          <div class="prop-meta">
+            Owner: Maria Gonzalez &nbsp;·&nbsp; Parcel: 07-01234-0000 &nbsp;·&nbsp; Est. Value: $285,000 &nbsp;·&nbsp; 3 active signals
+          </div>
+          <div style="margin-top:4px;">
+            <span class="pill pill-red">Foreclosure</span>
+            <span class="pill pill-red">Tax Lien</span>
+            <span class="pill pill-amber">Code Violation</span>
+          </div>
+        </div>
+        <div class="prop-score-ring">92</div>
+      </div>
+
+      <div class="flex gap-md">
+        <!-- Timeline -->
+        <div class="flex-1">
+          <h3 style="margin-bottom:8px;">Signal History</h3>
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-dot red"></div>
+              <div class="tl-date">2026-03-18</div>
+              <div class="tl-title">Foreclosure Filing (Lis Pendens)</div>
+              <div class="tl-desc">Essex County Clerk — Case #2026-FC-04821. Lender: Wells Fargo. Amount: $212,400.</div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot red"></div>
+              <div class="tl-date">2026-02-12</div>
+              <div class="tl-title">Tax Lien Certificate Issued</div>
+              <div class="tl-desc">Newark Tax Office — $8,240 in delinquent property taxes (2024–2025). Lien sold at municipal auction.</div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot amber"></div>
+              <div class="tl-date">2026-01-28</div>
+              <div class="tl-title">Code Violation — Exterior</div>
+              <div class="tl-desc">Dept. of Code Enforcement — Violation #CE-2026-1142. Deteriorated facade, broken windows. 60-day cure notice.</div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot amber"></div>
+              <div class="tl-date">2025-11-15</div>
+              <div class="tl-title">Tax Delinquency Notice</div>
+              <div class="tl-desc">Initial delinquency notice for Q3/Q4 2024. Precursor to lien.</div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot gray"></div>
+              <div class="tl-date">2025-08-01</div>
+              <div class="tl-title">Property Last Sold</div>
+              <div class="tl-desc">Purchased for $265,000. Current estimated equity: ~$72,600.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Score chart + signal cards -->
+        <div style="width:220px;">
+          <h3 style="margin-bottom:8px;">Distress Trend</h3>
+          <div class="wf-chart">
+            <div class="wf-chart-label">Compound Score — 6 month</div>
+            <svg class="chart-svg" viewBox="0 0 200 55" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-top:4px;">
+              <!-- Grid lines -->
+              <line x1="0" y1="13" x2="200" y2="13" stroke="rgba(240,235,227,0.06)" stroke-width="0.5"/>
+              <line x1="0" y1="27" x2="200" y2="27" stroke="rgba(240,235,227,0.06)" stroke-width="0.5"/>
+              <line x1="0" y1="41" x2="200" y2="41" stroke="rgba(240,235,227,0.06)" stroke-width="0.5"/>
+              <!-- Area fill -->
+              <path d="M 0 50 L 0 48 L 33 45 L 66 40 L 100 32 L 133 18 L 166 10 L 200 5 L 200 50 Z" fill="rgba(192,57,43,0.12)"/>
+              <!-- Line -->
+              <path d="M 0 48 L 33 45 L 66 40 L 100 32 L 133 18 L 166 10 L 200 5" stroke="#C0392B" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Dots -->
+              <circle cx="0" cy="48" r="2.5" fill="#C0392B"/>
+              <circle cx="33" cy="45" r="2.5" fill="#C0392B"/>
+              <circle cx="66" cy="40" r="2.5" fill="#C0392B"/>
+              <circle cx="100" cy="32" r="2.5" fill="#C0392B"/>
+              <circle cx="133" cy="18" r="2.5" fill="#C0392B"/>
+              <circle cx="166" cy="10" r="2.5" fill="#C0392B"/>
+              <circle cx="200" cy="5" r="3" fill="#E8540A" stroke="#0C0A09" stroke-width="1.5"/>
+              <!-- Labels -->
+              <text x="2" y="54" fill="#625850" font-size="5" font-family="JetBrains Mono">Oct</text>
+              <text x="62" y="54" fill="#625850" font-size="5" font-family="JetBrains Mono">Dec</text>
+              <text x="128" y="54" fill="#625850" font-size="5" font-family="JetBrains Mono">Feb</text>
+              <text x="188" y="54" fill="#625850" font-size="5" font-family="JetBrains Mono">Now</text>
+            </svg>
+          </div>
+
+          <h3 style="margin-top:10px; margin-bottom:6px;">Active Signals</h3>
+          <div class="signal-card active" style="margin-bottom:5px;">
+            <div class="sig-name">Foreclosure Filing</div>
+            <div class="sig-detail">Lis pendens filed. Pre-sale window active.</div>
+            <div class="sig-date">Detected: 2026-03-18</div>
+          </div>
+          <div class="signal-card active" style="margin-bottom:5px;">
+            <div class="sig-name">Tax Lien</div>
+            <div class="sig-detail">$8,240 delinquent. Lien sold.</div>
+            <div class="sig-date">Detected: 2026-02-12</div>
+          </div>
+          <div class="signal-card" style="margin-bottom:5px;">
+            <div class="sig-name">Code Violation</div>
+            <div class="sig-detail">Exterior deterioration. Cure deadline approaching.</div>
+            <div class="sig-date">Detected: 2026-01-28</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>How Counselors Use This View</h2>
+  <div class="annotations">
+    <div class="ann"><div class="num">1</div><div class="desc"><strong>Timeline</strong> — chronological signal history reads top-to-bottom. Red dots = severe, amber = warning, gray = context events.</div></div>
+    <div class="ann"><div class="num">2</div><div class="desc"><strong>Trend chart</strong> — the rising line shows distress accelerating. A flat or dropping line means the situation is stabilizing.</div></div>
+    <div class="ann"><div class="num">3</div><div class="desc"><strong>Score ring</strong> — the 92 tells the counselor: this case is urgent. The ring color matches severity (red ≥ 75).</div></div>
+    <div class="ann"><div class="num">4</div><div class="desc"><strong>Conversation prep</strong> — the counselor now knows: foreclosure was filed 6 days ago, there's a tax lien, and a code violation. They can open with specific, informed language.</div></div>
+    <div class="ann"><div class="num">5</div><div class="desc"><strong>Equity at risk</strong> — $72.6K estimated equity. This frames the urgency: the homeowner has real wealth to preserve.</div></div>
+    <div class="ann"><div class="num">6</div><div class="desc"><strong>Signal cards</strong> — quick-reference summaries with detection dates. Active signals have a red left border; resolved signals are gray.</div></div>
+  </div>
+
+  <h2>Why This Matters</h2>
+  <p>Without Beacon, a counselor might reach this homeowner <strong>after</strong> the sheriff's sale date is set. With Beacon, they reach her within days of the lis pendens filing — when intervention options (loan modification, repayment plans, mediation) are still available. The signal timeline turns raw public data into <strong>actionable outreach intelligence</strong>.</p>
+
+  <div class="footer">
+    <span>Red Planet Data, Inc. — Confidential</span>
+    <span>Beacon v1.0 — Demo Walkthrough — March 2026</span>
+  </div>
+</div>
+
+</body>
+</html>
