@@ -282,18 +282,19 @@ export default function ProspectDetailPage({
   }
 
   // Build "what does this family need" explanation
-  const equity = prospect.estimated_equity;
-  const signalCount = prospect.signal_count;
-  const ownerLast = prospect.owner_name.split(' ').pop();
+  const equity = prospect.estimated_equity || 0;
+  const signalCount = prospect.signal_count || 0;
+  const ownerLast = (prospect.owner_name || '').split(' ').pop() || 'Owner';
+  const yearsHeld = prospect.years_held || 0;
   let explanation = '';
   let interventionWindow = '';
   let suggestedService = '';
   if (prospect.compound_score >= 80) {
-    explanation = `The ${ownerLast} family is at high risk of losing their home. They have ${formatCurrency(equity)} in home equity built over ${prospect.years_held} years that they stand to lose. With ${signalCount} simultaneous distress indicators, they may benefit from ACCC's debt management program — early intervention could help them avoid foreclosure and protect their family's wealth.`;
+    explanation = `The ${ownerLast} family is at high risk of losing their home. They have ${formatCurrency(equity)} in home equity${yearsHeld ? ` built over ${yearsHeld} years` : ''} that they stand to lose. With ${signalCount} simultaneous distress indicators, they may benefit from ACCC's debt management program — early intervention could help them avoid foreclosure and protect their family's wealth.`;
     interventionWindow = 'Late stage — foreclosure or bankruptcy proceedings may already be underway. Immediate outreach recommended.';
     suggestedService = prospect.has_bankruptcy ? 'Bankruptcy Counseling' : prospect.has_lis_pendens ? 'Foreclosure Prevention' : 'Debt Management Program (DMP)';
   } else if (prospect.is_long_hold && prospect.is_high_equity) {
-    explanation = `The ${ownerLast} family has lived in their home for ${prospect.years_held} years, building ${formatCurrency(equity)} in equity. They purchased for ${formatCurrency(prospect.last_sale_price)} and their home is now worth approximately ${formatCurrency(prospect.assessed_value)}. Without help, they could lose everything they've built.`;
+    explanation = `The ${ownerLast} family has lived in their home${yearsHeld ? ` for ${yearsHeld} years` : ''}, building ${formatCurrency(equity)} in equity.${prospect.last_sale_price ? ` They purchased for ${formatCurrency(prospect.last_sale_price)}` : ''}${prospect.assessed_value ? ` and their home is now worth approximately ${formatCurrency(prospect.assessed_value)}` : ''}. Without help, they could lose everything they've built.`;
     interventionWindow = 'Mid stage — DMP is still viable but the window is narrowing. Proactive outreach recommended.';
     suggestedService = 'Debt Management Program (DMP)';
   } else {
@@ -314,7 +315,7 @@ export default function ProspectDetailPage({
       </Link>
 
       {/* Header with score */}
-      <div className="bg-white rounded-xl border border-beacon-border p-6 mb-6">
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-6 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
             <h1 className="text-lg font-bold text-beacon-text">
@@ -322,7 +323,7 @@ export default function ProspectDetailPage({
             </h1>
             <p className="text-sm text-beacon-text-secondary mt-1">{prospect.owner_name}</p>
             <p className="text-xs text-beacon-text-muted mt-0.5">
-              Owned since {prospect.last_sale_date.slice(0, 4)} ({prospect.years_held} years)
+              {prospect.last_sale_date ? `Owned since ${prospect.last_sale_date.slice(0, 4)}` : 'Ownership date unknown'}{prospect.years_held ? ` (${prospect.years_held} years)` : ''}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -361,7 +362,7 @@ export default function ProspectDetailPage({
       {/* Property details + Signal summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Property details */}
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Home size={15} className="text-beacon-primary" />
             Property Details
@@ -378,15 +379,15 @@ export default function ProspectDetailPage({
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Last Sale</p>
               <p className="text-sm font-medium text-beacon-text mt-0.5">{formatCurrency(prospect.last_sale_price)}</p>
-              <p className="text-xs text-beacon-text-muted">{prospect.last_sale_date}</p>
+              <p className="text-xs text-beacon-text-muted">{prospect.last_sale_date || '—'}</p>
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Years Held</p>
-              <p className="text-sm font-medium text-beacon-text mt-0.5">{prospect.years_held} years</p>
+              <p className="text-sm font-medium text-beacon-text mt-0.5">{prospect.years_held ? `${prospect.years_held} years` : '—'}</p>
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">County</p>
-              <p className="text-sm font-medium text-beacon-text mt-0.5">{prospect.county}</p>
+              <p className="text-sm font-medium text-beacon-text mt-0.5">{prospect.county || '—'}</p>
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Office</p>
@@ -396,7 +397,7 @@ export default function ProspectDetailPage({
         </div>
 
         {/* Signal summary */}
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <AlertTriangle size={15} className="text-beacon-accent" />
             Distress Indicators
@@ -427,18 +428,18 @@ export default function ProspectDetailPage({
           <div className="flex gap-4 text-xs text-beacon-text-muted">
             <span className="flex items-center gap-1">
               <Calendar size={12} />
-              First detected: {prospect.first_signal_date}
+              First detected: {prospect.first_signal_date || '—'}
             </span>
             <span className="flex items-center gap-1">
               <Clock size={12} />
-              Most recent: {prospect.most_recent_signal_date}
+              Most recent: {prospect.most_recent_signal_date || '—'}
             </span>
           </div>
         </div>
       </div>
 
       {/* Timeline event list */}
-      <div className="bg-white rounded-xl border border-beacon-border p-5 mb-6">
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
         <h2 className="text-sm font-semibold text-beacon-text mb-4">Hardship Timeline</h2>
         <div className="relative">
           {/* Timeline line */}
@@ -449,7 +450,7 @@ export default function ProspectDetailPage({
               const sevDef = SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.info;
               return (
                 <div key={event.id} className="flex items-start gap-4 pl-1">
-                  <div className="relative z-10 w-7 h-7 rounded-full bg-white border-2 border-beacon-border flex items-center justify-center text-sm flex-shrink-0">
+                  <div className="relative z-10 w-7 h-7 rounded-full bg-beacon-surface border-2 border-beacon-border flex items-center justify-center text-sm flex-shrink-0">
                     {EVENT_ICONS[event.signal_type] || '📌'}
                   </div>
                   <div className="flex-1 pb-1">
@@ -481,11 +482,11 @@ export default function ProspectDetailPage({
         </h2>
         <p className="text-sm text-beacon-text-secondary leading-relaxed mb-4">{explanation}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-white/60 rounded-lg p-3">
+          <div className="bg-beacon-surface/60 rounded-lg p-3">
             <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Intervention Window</p>
             <p className="text-xs text-beacon-text-secondary leading-relaxed">{interventionWindow}</p>
           </div>
-          <div className="bg-white/60 rounded-lg p-3">
+          <div className="bg-beacon-surface/60 rounded-lg p-3">
             <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Suggested Service</p>
             <p className="text-sm font-semibold text-beacon-primary-dark">{suggestedService}</p>
           </div>
@@ -493,7 +494,7 @@ export default function ProspectDetailPage({
       </div>
 
       {/* Contact Information — Tracerfy skip trace */}
-      <div className="bg-white rounded-xl border border-beacon-border p-5 mb-6">
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-beacon-text flex items-center gap-2">
             <Phone size={15} className="text-beacon-primary" />
@@ -505,7 +506,7 @@ export default function ProspectDetailPage({
               <button
                 onClick={fetchContact}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
-                style={{ backgroundColor: '#1B5EA8' }}
+                style={{ backgroundColor: 'var(--beacon-primary)' }}
               >
                 <Search size={13} />
                 Look Up Contact
@@ -516,7 +517,7 @@ export default function ProspectDetailPage({
               <button
                 onClick={fetchContact}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
-                style={{ backgroundColor: '#1B5EA8' }}
+                style={{ backgroundColor: 'var(--beacon-primary)' }}
               >
                 <RefreshCw size={12} />
                 Search Again
@@ -541,7 +542,7 @@ export default function ProspectDetailPage({
                 className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
                   width: `${contactProgress}%`,
-                  backgroundColor: '#1B5EA8',
+                  backgroundColor: 'var(--beacon-primary)',
                 }}
               />
             </div>
@@ -753,7 +754,7 @@ export default function ProspectDetailPage({
       {/* Counselor notes + status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Notes */}
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <FileText size={15} className="text-beacon-text-secondary" />
             Counselor Notes
@@ -770,7 +771,7 @@ export default function ProspectDetailPage({
               onClick={handleAddNote}
               disabled={!noteText.trim()}
               className="mt-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg disabled:opacity-40 transition-colors"
-              style={{ backgroundColor: '#1B5EA8' }}
+              style={{ backgroundColor: 'var(--beacon-primary)' }}
             >
               <Plus size={14} />
               Add Note
@@ -791,7 +792,7 @@ export default function ProspectDetailPage({
         </div>
 
         {/* Status and assignment */}
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <User size={15} className="text-beacon-text-secondary" />
             Status &amp; Assignment
