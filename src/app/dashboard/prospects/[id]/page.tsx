@@ -137,13 +137,13 @@ export default function ProspectDetailPage({
       const queueId = submitData.queueId;
       setContactStatus('Searching records...');
 
-      // Step 2: Poll for results (client-side, 4s intervals, max 30 attempts)
-      for (let attempt = 0; attempt < 30; attempt++) {
+      // Step 2: Poll for results (client-side, 4s intervals, max 15 attempts)
+      for (let attempt = 0; attempt < 15; attempt++) {
         await new Promise((r) => setTimeout(r, 4000));
         setContactStatus(`Searching records... (${attempt + 1})`);
 
         try {
-          const pollRes = await fetch(`/api/beacon/skip-trace?queueId=${queueId}`);
+          const pollRes = await fetch(`/api/beacon/skip-trace?queueId=${queueId}&attempt=${attempt}`);
           const pollData = await pollRes.json();
 
           if (pollData.status === 'complete') {

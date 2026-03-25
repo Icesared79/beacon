@@ -170,9 +170,16 @@ export async function POST(req: NextRequest) {
 // ──────────────────────────────────────────────────────────────────
 // GET — Poll for results. Client calls this repeatedly until done.
 // Each call is a single check — completes in <5s.
+//
+// The client passes &attempt=N so we know how long we've been waiting.
+// Tracerfy returns [] (empty array) both while processing AND when
+// there are no results for the address. After ~35s of empty arrays
+// we treat it as "complete with no results found."
 // ──────────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const queueId = req.nextUrl.searchParams.get('queueId');
+  const attempt = Number(req.nextUrl.searchParams.get('attempt') || '0');
+
   if (!queueId) {
     return NextResponse.json({ error: 'Missing queueId' }, { status: 400 });
   }
@@ -189,12 +196,16 @@ export async function GET(req: NextRequest) {
 
     if (!pollRes.ok) {
       console.log(`[skip-trace] Poll HTTP ${pollRes.status}`);
+      // After enough attempts, give up
+      if (attempt >= 8) {
+        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+      }
       return NextResponse.json({ status: 'pending' });
     }
 
     const pollData = await pollRes.json();
 
-    // Format A: Array of result objects
+    // Format A: Array of result objects — we have data
     if (Array.isArray(pollData) && pollData.length > 0) {
       const result = mapTracerfyRow(pollData[0] as Record<string, unknown>);
       return NextResponse.json({ status: 'complete', ...result });
@@ -206,7 +217,6 @@ export async function GET(req: NextRequest) {
       const isPending = obj.pending === true || obj.status === 'pending' || obj.status === 'processing';
 
       if (!isPending && obj.download_url) {
-        // Fetch and parse the download
         try {
           const dlRes = await fetch(obj.download_url as string, {
             headers: { Authorization: `Bearer ${apiKey}` },
@@ -233,22 +243,34 @@ export async function GET(req: NextRequest) {
       }
 
       if (!isPending && !obj.download_url) {
-        // Complete but no results
         return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
       }
 
-      // Still pending
+      // Still pending — but give up after enough attempts
+      if (attempt >= 8) {
+        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+      }
       return NextResponse.json({ status: 'pending' });
     }
 
-    // Format C: Empty array — still processing
+    // Format C: Empty array — Tracerfy returns this both while processing
+    // and when no results exist. After 8+ attempts (~35s), treat as done.
     if (Array.isArray(pollData) && pollData.length === 0) {
+      if (attempt >= 8) {
+        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+      }
       return NextResponse.json({ status: 'pending' });
     }
 
+    if (attempt >= 8) {
+      return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+    }
     return NextResponse.json({ status: 'pending' });
   } catch (err) {
     console.error('[skip-trace] Poll error:', err);
+    if (attempt >= 8) {
+      return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+    }
     return NextResponse.json({ status: 'pending' });
   }
 }

@@ -1,11 +1,39 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+function getUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function getAnonKey() {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+}
+
+let _supabase: SupabaseClient | null = null
+
+export function getSupabase() {
+  if (!_supabase) {
+    const url = getUrl()
+    const key = getAnonKey()
+    if (!url || !key) return null
+    _supabase = createClient(url, key)
+  }
+  return _supabase
+}
+
+// Keep backward compat — pages that import `supabase` directly
+export const supabase = null as unknown as SupabaseClient
 
 export function getServiceClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
-  return createClient(supabaseUrl, serviceKey);
+  const url = getUrl()
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY || ''
+  if (!url || !serviceKey) return null
+  return createClient(url, serviceKey)
+}
+
+export function getBrowserClient() {
+  const url = getUrl()
+  const key = getAnonKey()
+  if (!url || !key) return null as unknown as ReturnType<typeof createBrowserClient>
+  return createBrowserClient(url, key)
 }
