@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Download, ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, ArrowRight, X, Search, Phone } from 'lucide-react';
 import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
 import { DEMO_PROSPECTS, getSignalsForProspect } from '@/lib/prospect-data';
 import { cn, formatCurrency, formatNumber, getScoreColor, getScoreLabel } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { cn, formatCurrency, formatNumber, getScoreColor, getScoreLabel } from '
 const PAGE_SIZE = 25;
 
 export default function ProspectsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
   const [officeFilter, setOfficeFilter] = useState('');
   const [signalFilter, setSignalFilter] = useState('');
   const [minScore, setMinScore] = useState(0);
@@ -23,6 +24,15 @@ export default function ProspectsPage() {
 
   const filtered = useMemo(() => {
     let data = DEMO_PROSPECTS;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      data = data.filter((p) =>
+        p.owner_name.toLowerCase().includes(q) ||
+        p.address.toLowerCase().includes(q) ||
+        p.city.toLowerCase().includes(q) ||
+        p.zip.includes(q)
+      );
+    }
     if (officeFilter) data = data.filter((p) => p.office_city === officeFilter);
     if (statusFilter) data = data.filter((p) => p.status === statusFilter);
     if (minScore > 0) data = data.filter((p) => p.compound_score >= minScore);
@@ -33,14 +43,15 @@ export default function ProspectsPage() {
       });
     }
     return data.sort((a, b) => b.compound_score - a.compound_score);
-  }, [officeFilter, signalFilter, minScore, statusFilter]);
+  }, [searchQuery, officeFilter, signalFilter, minScore, statusFilter]);
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const hasFilters = officeFilter || signalFilter || minScore > 0 || statusFilter;
+  const hasFilters = searchQuery || officeFilter || signalFilter || minScore > 0 || statusFilter;
 
   function clearFilters() {
+    setSearchQuery('');
     setOfficeFilter('');
     setSignalFilter('');
     setMinScore(0);
@@ -83,6 +94,26 @@ export default function ProspectsPage() {
           <Download size={15} />
           Export
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3.5 top-3 h-4 w-4 text-beacon-text-muted" />
+        <input
+          type="text"
+          placeholder="Search by name, address, city, or ZIP..."
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+          className="w-full pl-10 pr-10 py-2.5 border border-beacon-border rounded-lg bg-white text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 focus:border-beacon-primary transition-all"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => { setSearchQuery(''); setPage(0); }}
+            className="absolute right-3.5 top-3 text-beacon-text-muted hover:text-beacon-text transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Filters */}

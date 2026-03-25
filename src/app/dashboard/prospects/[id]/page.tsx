@@ -13,6 +13,10 @@ import {
   User,
   Plus,
   Printer,
+  Phone,
+  Mail,
+  MapPin,
+  Loader2,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
@@ -50,6 +54,13 @@ export default function ProspectDetailPage({
   const [status, setStatus] = useState(prospect?.status || 'new');
   const [noteText, setNoteText] = useState('');
   const [notes, setNotes] = useState<Array<{ text: string; time: string }>>([]);
+  const [contactInfo, setContactInfo] = useState<{
+    phones: Array<{ number: string; type: string }>;
+    emails: string[];
+    mailingAddress: { street: string; city: string; state: string; zip: string } | null;
+  } | null>(null);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactFetched, setContactFetched] = useState(false);
 
   const signals = prospect ? getSignalsForProspect(prospect) : [];
   const events = useMemo(() => getDemoSignalEvents(id), [id]);
@@ -91,6 +102,30 @@ export default function ProspectDetailPage({
 
   function handleStatusChange(newStatus: string) {
     setStatus(newStatus);
+  }
+
+  async function fetchContact() {
+    if (!prospect) return;
+    setContactLoading(true);
+    try {
+      const res = await fetch('/api/beacon/skip-trace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: prospect.owner_name,
+          address: prospect.address,
+          city: prospect.city,
+          state: prospect.state,
+          zip: prospect.zip,
+        }),
+      });
+      const data = await res.json();
+      setContactInfo(data);
+      setContactFetched(true);
+    } catch {
+      setContactFetched(true);
+    }
+    setContactLoading(false);
   }
 
   // Build "why this matters" explanation
@@ -326,6 +361,106 @@ export default function ProspectDetailPage({
           Why This Matters
         </h2>
         <p className="text-sm text-beacon-text-secondary leading-relaxed">{explanation}</p>
+      </div>
+
+      {/* Contact Information — Tracerfy skip trace */}
+      <div className="bg-white rounded-xl border border-beacon-border p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-beacon-text flex items-center gap-2">
+            <Phone size={15} className="text-beacon-primary" />
+            Contact Information
+          </h2>
+          {!contactFetched && (
+            <button
+              onClick={fetchContact}
+              disabled={contactLoading}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white rounded-lg disabled:opacity-60 transition-colors"
+              style={{ backgroundColor: '#1B5EA8' }}
+            >
+              {contactLoading ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  Looking up...
+                </>
+              ) : (
+                <>
+                  <Phone size={13} />
+                  Look Up Contact
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {!contactFetched && !contactLoading && (
+          <p className="text-xs text-beacon-text-muted">
+            Click &ldquo;Look Up Contact&rdquo; to retrieve phone and email for this prospect via skip trace.
+          </p>
+        )}
+
+        {contactLoading && (
+          <div className="flex items-center gap-2 text-xs text-beacon-text-muted">
+            <Loader2 size={14} className="animate-spin" />
+            Searching records for {prospect.owner_name}...
+          </div>
+        )}
+
+        {contactFetched && contactInfo && (
+          <div className="space-y-2.5">
+            {contactInfo.phones && contactInfo.phones.length > 0 ? (
+              contactInfo.phones.map((phone, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Phone size={14} className="text-beacon-text-muted flex-shrink-0" />
+                  <a
+                    href={`tel:${phone.number}`}
+                    className="text-sm text-beacon-primary hover:underline"
+                  >
+                    {phone.number}
+                  </a>
+                  <span className="text-[10px] text-beacon-text-muted uppercase tracking-wider">
+                    {phone.type}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-beacon-text-muted flex items-center gap-2">
+                <Phone size={13} className="text-beacon-text-muted" />
+                No phone numbers found
+              </p>
+            )}
+            {contactInfo.emails && contactInfo.emails.length > 0 ? (
+              contactInfo.emails.map((email, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Mail size={14} className="text-beacon-text-muted flex-shrink-0" />
+                  <a
+                    href={`mailto:${email}`}
+                    className="text-sm text-beacon-primary hover:underline"
+                  >
+                    {email}
+                  </a>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-beacon-text-muted flex items-center gap-2">
+                <Mail size={13} className="text-beacon-text-muted" />
+                No email addresses found
+              </p>
+            )}
+            {contactInfo.mailingAddress && (
+              <div className="flex items-center gap-3">
+                <MapPin size={14} className="text-beacon-text-muted flex-shrink-0" />
+                <span className="text-sm text-beacon-text-secondary">
+                  {contactInfo.mailingAddress.street}, {contactInfo.mailingAddress.city}{' '}
+                  {contactInfo.mailingAddress.state} {contactInfo.mailingAddress.zip}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {contactFetched && !contactInfo && (
+          <p className="text-xs text-beacon-text-muted">No contact information found for this prospect.</p>
+        )}
       </div>
 
       {/* Counselor notes + status */}

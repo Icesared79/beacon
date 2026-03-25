@@ -60,7 +60,13 @@ export default function MarketsPage() {
 
   const officesWithProspects = ACCC_OFFICES.map((o) => {
     const market = ACCC_MARKETS.find((m) => m.city === o.city);
-    return { ...o, prospects: market?.prospects || 0 };
+    return {
+      ...o,
+      prospects: market?.prospects || 0,
+      critical: market?.critical || 0,
+      score: market?.score || 0,
+      address: '',
+    };
   });
 
   return (
