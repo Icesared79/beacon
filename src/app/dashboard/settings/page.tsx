@@ -81,9 +81,9 @@ export default function SettingsPage() {
           </h2>
           <div className="space-y-3">
             {[
-              'New critical prospects in my market',
+              'New households needing help in my community',
               'Status changes on my assignments',
-              'Weekly distress summary report',
+              'Weekly community impact report',
             ].map((label) => (
               <label key={label} className="flex items-center gap-3">
                 <input type="checkbox" defaultChecked className="rounded border-beacon-border" />
@@ -101,7 +101,7 @@ export default function SettingsPage() {
           <div className="space-y-2 text-sm text-beacon-text-secondary">
             <p>Atlas connection: <span className="text-emerald-600 font-medium">Connected</span></p>
             <p>Last sync: <span className="font-medium">March 24, 2026</span></p>
-            <p>Records loaded: <span className="font-medium">18,247 prospects</span></p>
+            <p>Records loaded: <span className="font-medium">18,247 households</span></p>
           </div>
         </div>
       </div>

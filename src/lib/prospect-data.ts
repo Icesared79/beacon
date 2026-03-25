@@ -227,21 +227,21 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'tax_delinquency', severity: 'high',
       detected_date: '2024-01-12',
-      description: 'Property tax delinquency first recorded — unpaid balance detected.',
+      description: 'First missed property tax payment recorded. Family may be experiencing financial hardship.',
       amount: 4821,
     });
     events.push({
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'tax_delinquency', severity: 'high',
       detected_date: '2025-01-15',
-      description: 'Second consecutive tax year delinquent. Balance increasing.',
+      description: 'Second consecutive year of missed property taxes. Financial strain is ongoing.',
       amount: 9642,
     });
     events.push({
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'tax_delinquency', severity: 'critical',
       detected_date: '2026-01-20',
-      description: 'Third consecutive tax year delinquent. County lien likely.',
+      description: 'Third consecutive year of missed property taxes. County tax lien likely — intervention urgently needed.',
       amount: 14463,
     });
   }
@@ -250,7 +250,7 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'llc_dissolved', severity: 'high',
       detected_date: '2024-03-15',
-      description: `LLC "${prospect.owner_name.split(' ')[1]} Holdings LLC" dissolved by state.`,
+      description: `Business entity "${prospect.owner_name.split(' ')[1]} Holdings LLC" dissolved. Possible loss of income or business failure.`,
     });
   }
   if (prospect.has_lis_pendens) {
@@ -258,7 +258,7 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'lis_pendens', severity: 'critical',
       detected_date: '2025-11-08',
-      description: 'Lis pendens filed — lender initiated foreclosure proceedings.',
+      description: 'Lender initiated foreclosure proceedings. This family is at risk of losing their home.',
       amount: 142000,
     });
   }
@@ -267,7 +267,7 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'bankruptcy', severity: 'critical',
       detected_date: '2025-06-20',
-      description: 'Chapter 7 bankruptcy filing detected.',
+      description: 'Chapter 7 bankruptcy filing detected. Family may need bankruptcy counseling services.',
     });
   }
   if (prospect.has_probate) {
@@ -275,7 +275,7 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'probate', severity: 'warning',
       detected_date: '2025-04-12',
-      description: 'Probate case opened. Property in estate.',
+      description: 'Probate case opened. Surviving family members may need housing counseling support.',
     });
   }
   if (prospect.is_long_hold) {
@@ -283,7 +283,7 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'long_hold', severity: 'info',
       detected_date: prospect.first_signal_date,
-      description: `Property held for ${prospect.years_held} years since purchase in ${prospect.last_sale_date.slice(0, 4)}.`,
+      description: `This family has lived in their home for ${prospect.years_held} years, since ${prospect.last_sale_date.slice(0, 4)}. Deep community roots worth protecting.`,
     });
   }
   if (prospect.is_high_equity) {
@@ -291,7 +291,7 @@ export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
       id: `${prospectId}-${idx++}`, prospect_id: prospectId,
       signal_type: 'high_equity', severity: 'info',
       detected_date: prospect.first_signal_date,
-      description: `Estimated equity of $${prospect.estimated_equity.toLocaleString()} — significant asset to protect.`,
+      description: `This family has $${prospect.estimated_equity.toLocaleString()} in home equity built over years — wealth they stand to lose without intervention.`,
     });
   }
 

@@ -25,8 +25,8 @@ export function getScoreColor(score: number): string {
 }
 
 export function getScoreLabel(score: number): string {
-  if (score >= 80) return 'Critical';
-  if (score >= 60) return 'High';
+  if (score >= 80) return 'Urgent';
+  if (score >= 60) return 'High Need';
   if (score >= 40) return 'Moderate';
   return 'Low';
 }

@@ -74,9 +74,9 @@ export default function MarketsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-beacon-text tracking-tight">Markets</h1>
+          <h1 className="text-xl font-bold text-beacon-text tracking-tight">Community Needs Map</h1>
           <p className="text-sm text-beacon-text-muted mt-1">
-            Distress signal density across ACCC operating markets
+            Where do people in your community need help right now?
           </p>
         </div>
         <div>
@@ -108,21 +108,21 @@ export default function MarketsPage() {
         <div className="bg-white rounded-xl border border-beacon-border p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
             <UsersIcon size={16} className="text-beacon-primary" />
-            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Total Prospects</span>
+            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Households Identified</span>
           </div>
           <p className="text-2xl font-bold text-beacon-text">{formatNumber(totals.prospects)}</p>
         </div>
         <div className="bg-white rounded-xl border border-beacon-border p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
             <AlertCircle size={16} className="text-beacon-critical" />
-            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Critical Signals</span>
+            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Urgent Interventions</span>
           </div>
           <p className="text-2xl font-bold text-beacon-critical">{formatNumber(totals.critical)}</p>
         </div>
         <div className="bg-white rounded-xl border border-beacon-border p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
             <Target size={16} className="text-beacon-high" />
-            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Avg Score</span>
+            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Avg Need Level</span>
           </div>
           <p className="text-2xl font-bold text-beacon-text">{totals.avgScore}</p>
         </div>
@@ -132,17 +132,17 @@ export default function MarketsPage() {
         {/* Market table */}
         <div className="xl:col-span-2 bg-white rounded-xl border border-beacon-border">
           <div className="px-5 py-4 border-b border-beacon-border">
-            <h2 className="text-sm font-semibold text-beacon-text">Top Markets by Distress Concentration</h2>
+            <h2 className="text-sm font-semibold text-beacon-text">Communities with Greatest Need</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-beacon-border">
-                  <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Market</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Prospects</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Critical</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Community</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Households</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Urgent</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Trend</th>
-                  <th className="text-right px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Score</th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Need</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-beacon-border">
@@ -190,7 +190,7 @@ export default function MarketsPage() {
 
         {/* Signal breakdown donut */}
         <div className="bg-white rounded-xl border border-beacon-border p-5">
-          <h2 className="text-sm font-semibold text-beacon-text mb-4">Signal Breakdown</h2>
+          <h2 className="text-sm font-semibold text-beacon-text mb-4">Distress Indicator Breakdown</h2>
           <div className="flex justify-center mb-4">
             <ResponsiveContainer width={200} height={200}>
               <PieChart>
@@ -226,7 +226,7 @@ export default function MarketsPage() {
       {/* Monthly trend chart */}
       <div className="bg-white rounded-xl border border-beacon-border p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-beacon-text">New Distress Signals Detected (6 Months)</h2>
+          <h2 className="text-sm font-semibold text-beacon-text">Families Identified as Needing Help (6 Months)</h2>
           <span className="text-xs text-beacon-text-muted">National total</span>
         </div>
         <ResponsiveContainer width="100%" height={240}>
@@ -245,7 +245,7 @@ export default function MarketsPage() {
               tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip
-              formatter={(value) => [formatNumber(Number(value)), 'Signals']}
+              formatter={(value) => [formatNumber(Number(value)), 'Families']}
               contentStyle={{
                 background: '#0F172A',
                 border: 'none',

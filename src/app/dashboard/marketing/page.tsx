@@ -96,9 +96,9 @@ export default function MarketingPage() {
         <ol className="text-xs text-beacon-text-secondary space-y-1.5 list-decimal list-inside">
           <li>Cover — Beacon + ACCC branding</li>
           <li>The Timing Problem — reactive vs proactive outreach</li>
-          <li>What Beacon Sees — five distress signals</li>
-          <li>A Real Example — Denver property with signals</li>
-          <li>Three Views — Dashboard, Prospect Feed, Signal Timeline</li>
+          <li>What Beacon Sees — five distress indicators</li>
+          <li>A Real Example — Denver family with indicators</li>
+          <li>Three Views — Community Map, Household Feed, Hardship Timeline</li>
           <li>Your Markets — ACCC office locations + data</li>
           <li>The Data Behind Beacon — 93M records, 556 sources</li>
           <li>How Counselors Use It — 3-step workflow</li>

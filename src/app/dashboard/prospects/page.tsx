@@ -82,9 +82,9 @@ export default function ProspectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-beacon-text tracking-tight">Prospects</h1>
+          <h1 className="text-xl font-bold text-beacon-text tracking-tight">Households</h1>
           <p className="text-sm text-beacon-text-muted mt-1">
-            {formatNumber(filtered.length)} homeowners showing distress signals
+            {formatNumber(filtered.length)} families who may need help
           </p>
         </div>
         <button
@@ -135,7 +135,7 @@ export default function ProspectsPage() {
             onChange={(e) => { setSignalFilter(e.target.value); setPage(0); }}
             className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
           >
-            <option value="">All Signals</option>
+            <option value="">All Indicators</option>
             {Object.entries(SIGNAL_COLORS).map(([key, val]) => (
               <option key={key} value={key}>{val.label}</option>
             ))}
@@ -146,7 +146,7 @@ export default function ProspectsPage() {
             onChange={(e) => { setMinScore(Number(e.target.value)); setPage(0); }}
             className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
           >
-            <option value={0}>Min Score</option>
+            <option value={0}>Min Risk Level</option>
             <option value={40}>40+</option>
             <option value={60}>60+</option>
             <option value={80}>80+</option>
@@ -182,9 +182,9 @@ export default function ProspectsPage() {
             <thead>
               <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
                 <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Address</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Owner</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Signals</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Score</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Homeowner</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Distress Indicators</th>
+                <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Risk Level</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Status</th>
                 <th className="text-center px-3 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-12"></th>
               </tr>
@@ -202,7 +202,7 @@ export default function ProspectsPage() {
                     <td className="px-4 py-3.5">
                       <p className="text-sm text-beacon-text">{prospect.owner_name}</p>
                       <p className="text-xs text-beacon-text-muted">
-                        {prospect.years_held}yr hold &middot; {formatCurrency(prospect.estimated_equity)} equity
+                        {prospect.years_held}yr homeowner &middot; {formatCurrency(prospect.estimated_equity)} at stake
                       </p>
                     </td>
                     <td className="px-4 py-3.5">

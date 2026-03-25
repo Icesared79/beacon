@@ -19,8 +19,8 @@ import { getBrowserClient } from '@/lib/supabase'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Prospects', href: '/dashboard/prospects', icon: Users },
-  { name: 'Markets', href: '/dashboard/markets', icon: Map },
+  { name: 'Households', href: '/dashboard/prospects', icon: Users },
+  { name: 'Community Map', href: '/dashboard/markets', icon: Map },
   { name: 'Marketing', href: '/dashboard/marketing', icon: Megaphone },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]

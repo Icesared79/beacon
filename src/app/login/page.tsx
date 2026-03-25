@@ -48,12 +48,12 @@ export default function LoginPage() {
         {/* Middle statement */}
         <div>
           <h1 className="text-white text-4xl font-bold leading-tight mb-6">
-            Find the people who need us before they know to ask.
+            Find the families who need us before they know to ask.
           </h1>
           <p className="text-blue-200 text-lg leading-relaxed">
-            Beacon monitors financial distress signals across ACCC&apos;s operating markets
-            — giving counselors a proactive way to reach homeowners before they reach
-            crisis stage.
+            Beacon identifies families in financial distress across ACCC&apos;s communities
+            — giving counselors a proactive way to offer help before families reach
+            crisis stage and lose everything.
           </p>
         </div>
 
@@ -61,15 +61,15 @@ export default function LoginPage() {
         <div className="grid grid-cols-3 gap-6">
           <div>
             <p className="text-white text-2xl font-bold font-mono">31,007</p>
-            <p className="text-blue-200 text-sm mt-1">Active prospects</p>
+            <p className="text-blue-200 text-sm mt-1">Families identified</p>
           </div>
           <div>
             <p className="text-white text-2xl font-bold font-mono">7,718</p>
-            <p className="text-blue-200 text-sm mt-1">Critical signals</p>
+            <p className="text-blue-200 text-sm mt-1">Need urgent help</p>
           </div>
           <div>
             <p className="text-white text-2xl font-bold font-mono">40+</p>
-            <p className="text-blue-200 text-sm mt-1">Markets covered</p>
+            <p className="text-blue-200 text-sm mt-1">Communities served</p>
           </div>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
 
           <div className="mt-8 pt-8 border-t border-gray-200">
             <p className="text-xs text-gray-400 text-center">
-              Beacon is a financial distress intelligence platform operated by Red Planet
+              Beacon is a community outreach platform operated by Red Planet
               Data exclusively for American Consumer Credit Counseling staff.
             </p>
           </div>

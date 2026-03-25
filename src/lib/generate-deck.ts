@@ -14,7 +14,7 @@ export function generateBeaconDeck(): PptxGenJS {
   pptx.layout = 'LAYOUT_16x9';
   pptx.author = 'Red Planet Data';
   pptx.company = 'Red Planet Data';
-  pptx.subject = 'Beacon — Financial Distress Intelligence for ACCC';
+  pptx.subject = 'Beacon — Community Outreach Intelligence for ACCC';
   pptx.title = 'Beacon Pitch Deck';
 
   // ===== SLIDE 1 — Cover =====
@@ -23,7 +23,7 @@ export function generateBeaconDeck(): PptxGenJS {
   // Beacon logo placeholder (lighthouse icon described as text)
   s1.addText('◉', { x: 4.1, y: 1.2, w: 1.8, h: 0.8, fontSize: 48, color: ACCENT, align: 'center', fontFace: 'Arial' });
   s1.addText('BEACON', { x: 2, y: 2.0, w: 6, h: 0.8, fontSize: 44, bold: true, color: WHITE, align: 'center', fontFace: 'Arial' });
-  s1.addText('Financial Distress Intelligence\nfor American Consumer Credit Counseling', {
+  s1.addText('Community Outreach Intelligence\nfor American Consumer Credit Counseling', {
     x: 2, y: 2.9, w: 6, h: 0.9, fontSize: 18, color: MUTED, align: 'center', fontFace: 'Arial', lineSpacing: 26,
   });
   s1.addText('Prepared by Red Planet Data  |  March 2026', {
@@ -51,7 +51,7 @@ export function generateBeaconDeck(): PptxGenJS {
   // With Beacon column
   s2.addShape(pptx.ShapeType.roundRect, { x: 5.3, y: 2.0, w: 4, h: 2.8, fill: { color: 'EBF2FB' }, rectRadius: 0.1, line: { color: 'BFDBFE', width: 1 } });
   s2.addText('WITH BEACON', { x: 5.3, y: 2.1, w: 4, h: 0.4, fontSize: 12, bold: true, color: PRIMARY, align: 'center', fontFace: 'Arial' });
-  s2.addText('Atlas detects first distress signal\n↓\nACCC counselor reaches out\n↓\n2 months into distress', {
+  s2.addText('Atlas identifies family in need\n↓\nACCC counselor reaches out\n↓\n2 months into hardship', {
     x: 5.5, y: 2.5, w: 3.6, h: 2.0, fontSize: 13, color: TEXT, align: 'center', fontFace: 'Arial', lineSpacing: 22,
   });
 
@@ -59,16 +59,16 @@ export function generateBeaconDeck(): PptxGenJS {
   const s3 = pptx.addSlide();
   s3.background = { color: WHITE };
   s3.addText('What Beacon Sees', { x: 0.7, y: 0.4, w: 8, h: 0.5, fontSize: 28, bold: true, color: NAVY, fontFace: 'Arial' });
-  s3.addText('Five signals that identify your ideal client before they call anyone.', {
+  s3.addText('Five indicators that identify families who need help before they call anyone.', {
     x: 0.7, y: 1.0, w: 8, h: 0.4, fontSize: 15, color: TEXT, fontFace: 'Arial',
   });
 
   const signals = [
     { icon: '💰', name: 'Tax Delinquency', desc: 'Unpaid property taxes. Often the first sign of financial stress.', color: 'D97706' },
-    { icon: '⚖️', name: 'Lis Pendens', desc: 'Lender has initiated foreclosure. Homeowner needs intervention now.', color: 'DC2626' },
-    { icon: '🏢', name: 'Dissolved LLC', desc: 'Business entity that owns property was dissolved. Ownership at risk.', color: 'EA580C' },
-    { icon: '📅', name: 'Long Hold + High Equity', desc: 'Owned 10+ years with significant equity. Has assets to protect.', color: '2563EB' },
-    { icon: '⚡', name: 'Compound Signal', desc: 'Multiple signals firing simultaneously. Highest priority prospects.', color: '7C3AED' },
+    { icon: '⚖️', name: 'Foreclosure Risk', desc: 'Lender has initiated foreclosure. Family needs intervention now.', color: 'DC2626' },
+    { icon: '🏢', name: 'Dissolved LLC', desc: 'Business entity dissolved. Possible loss of income or business failure.', color: 'EA580C' },
+    { icon: '📅', name: 'Established + Equity at Risk', desc: 'Owned 10+ years with significant equity they stand to lose.', color: '2563EB' },
+    { icon: '⚡', name: 'Multiple Indicators', desc: 'Multiple distress indicators simultaneously. Highest need families.', color: '7C3AED' },
   ];
 
   signals.forEach((sig, i) => {
@@ -91,16 +91,16 @@ export function generateBeaconDeck(): PptxGenJS {
   s4.addText('1847 Elm Street, Denver CO 80202', { x: 1.0, y: 1.7, w: 5, h: 0.35, fontSize: 16, bold: true, color: NAVY, fontFace: 'Arial' });
   s4.addText('Robert M. Fischer  |  Owned since 2008 (17 years)', { x: 1.0, y: 2.1, w: 5, h: 0.3, fontSize: 11, color: TEXT, fontFace: 'Arial' });
 
-  s4.addText('Signals:', { x: 1.0, y: 2.5, w: 1, h: 0.3, fontSize: 11, bold: true, color: NAVY, fontFace: 'Arial' });
-  s4.addText('Long Hold 17yr  •  Tax Delinquent  •  LLC Dissolved  •  Lis Pendens  •  High Equity', {
+  s4.addText('Indicators:', { x: 1.0, y: 2.5, w: 1, h: 0.3, fontSize: 11, bold: true, color: NAVY, fontFace: 'Arial' });
+  s4.addText('Established 17yr  •  Tax Delinquent  •  LLC Dissolved  •  Foreclosure Risk  •  Equity at Risk', {
     x: 1.8, y: 2.5, w: 6, h: 0.3, fontSize: 11, color: ACCENT, fontFace: 'Arial',
   });
 
   const propDetails = [
-    ['Compound Score', '87/100'],
+    ['Risk Level', 'Urgent'],
     ['Assessed Value', '$387,000'],
-    ['Estimated Equity', '$284,000'],
-    ['First Signal', '14 months ago'],
+    ['Equity at Stake', '$284,000'],
+    ['Struggling Since', '14 months ago'],
   ];
   propDetails.forEach(([label, val], i) => {
     const x = 1.0 + i * 2.1;
@@ -108,7 +108,7 @@ export function generateBeaconDeck(): PptxGenJS {
     s4.addText(val, { x, y: 3.25, w: 2, h: 0.3, fontSize: 15, bold: true, color: PRIMARY, fontFace: 'Arial' });
   });
 
-  s4.addText('"This homeowner has $284,000 in equity they want to protect. They\'ve been in distress for over a year. They haven\'t called anyone yet. Beacon found them in month 2."', {
+  s4.addText('"This family has $284,000 in equity built over 17 years that they stand to lose. They\'ve been struggling for over a year. They haven\'t called anyone yet. Beacon found them in month 2."', {
     x: 0.7, y: 4.4, w: 8.6, h: 0.5, fontSize: 12, italic: true, color: TEXT, fontFace: 'Arial',
   });
 
@@ -118,9 +118,9 @@ export function generateBeaconDeck(): PptxGenJS {
   s5.addText('Three Views. One Platform.', { x: 0.7, y: 0.4, w: 8, h: 0.5, fontSize: 28, bold: true, color: NAVY, fontFace: 'Arial' });
 
   const views = [
-    { title: 'Distress Map', desc: 'Geographic heat map of\nACCC markets', color: PRIMARY },
-    { title: 'Prospect Feed', desc: 'Ranked list of homeowners\nmatching ACCC profile', color: ACCENT },
-    { title: 'Signal Timeline', desc: 'Individual property\ndistress arc', color: '16A34A' },
+    { title: 'Community Map', desc: 'Where do families need\nhelp in your area?', color: PRIMARY },
+    { title: 'Household Feed', desc: 'Families who may need\nACCC services', color: ACCENT },
+    { title: 'Hardship Timeline', desc: 'How long has this family\nbeen struggling?', color: '16A34A' },
   ];
   views.forEach((v, i) => {
     const x = 0.7 + i * 3.1;
@@ -143,9 +143,9 @@ export function generateBeaconDeck(): PptxGenJS {
   const tableRows: PptxGenJS.TableRow[] = [
     [
       { text: 'Market', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY } } },
-      { text: 'Active Prospects', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY }, align: 'right' } },
-      { text: 'Critical', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY }, align: 'right' } },
-      { text: 'Avg Score', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY }, align: 'right' } },
+      { text: 'Households', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY }, align: 'right' } },
+      { text: 'Urgent', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY }, align: 'right' } },
+      { text: 'Need Level', options: { bold: true, fontSize: 10, color: MUTED, fill: { color: LIGHT_GREY }, align: 'right' } },
     ],
     ...([
       ['Chicago, IL', '4,821', '1,204', '81'],
@@ -187,7 +187,7 @@ export function generateBeaconDeck(): PptxGenJS {
   });
 
   s7.addText('Updated continuously.', { x: 0.7, y: 2.9, w: 8.6, h: 0.4, fontSize: 14, color: PRIMARY, fontFace: 'Arial' });
-  s7.addText('This is not a one-time dataset. Beacon updates as new signals are detected — every week new homeowners enter distress.', {
+  s7.addText('This is not a one-time dataset. Beacon updates as new indicators are detected — every week new families need help.', {
     x: 0.7, y: 3.3, w: 8.6, h: 0.5, fontSize: 12, color: TEXT, fontFace: 'Arial',
   });
 
@@ -198,8 +198,8 @@ export function generateBeaconDeck(): PptxGenJS {
   s8.addText('Simple. Fast. Actionable.', { x: 0.7, y: 1.0, w: 8, h: 0.4, fontSize: 15, color: TEXT, fontFace: 'Arial' });
 
   const steps = [
-    { num: '1', title: 'Open Beacon', desc: 'See new high-priority\nprospects in your market' },
-    { num: '2', title: 'Review Timeline', desc: 'Understand the homeowner\'s\nfull situation' },
+    { num: '1', title: 'Open Beacon', desc: 'See families who need\nhelp in your community' },
+    { num: '2', title: 'Review Timeline', desc: 'Understand the family\'s\nfull situation' },
     { num: '3', title: 'Reach Out', desc: 'With context that makes the\nconversation meaningful' },
   ];
   steps.forEach((s, i) => {
@@ -243,7 +243,7 @@ export function generateBeaconDeck(): PptxGenJS {
   const pilotItems = [
     'Configure Beacon for Boston, Chicago, and Denver',
     'ACCC counselors in those offices use Beacon for 90 days',
-    'Measure: enrollment rate from Beacon-sourced prospects vs. current inbound rate',
+    'Measure: enrollment rate from Beacon-sourced households vs. current inbound rate',
     'Red Planet handles all configuration, data, and support',
   ];
   pilotItems.forEach((item, i) => {
@@ -280,7 +280,7 @@ export function generateBeaconDeck(): PptxGenJS {
   const nextSteps = [
     'Identify three pilot offices',
     'Red Planet configures Beacon for those markets (1 week)',
-    'Counselors begin using Beacon — first prospects delivered day one',
+    'Counselors begin using Beacon — first households identified day one',
   ];
   nextSteps.forEach((step, i) => {
     s12.addShape(pptx.ShapeType.ellipse, { x: 2.5, y: 2.0 + i * 0.7, w: 0.4, h: 0.4, fill: { color: ACCENT } });

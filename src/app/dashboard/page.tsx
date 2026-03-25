@@ -25,7 +25,7 @@ interface StatCard {
 
 const DEMO_STATS: StatCard[] = [
   {
-    label: 'New Prospects',
+    label: 'Households Who May Need Help',
     value: 1247,
     sublabel: 'This week',
     icon: Users,
@@ -33,25 +33,25 @@ const DEMO_STATS: StatCard[] = [
     bgColor: '#EBF2FB',
   },
   {
-    label: 'Critical Signals',
+    label: 'Families at Risk of Foreclosure',
     value: 384,
-    sublabel: 'Immediate attention',
+    sublabel: 'Urgent intervention needed',
     icon: AlertCircle,
     color: '#DC2626',
     bgColor: '#FEF2F2',
   },
   {
-    label: 'In Progress',
+    label: 'People Reached So Far',
     value: 892,
-    sublabel: 'Being contacted',
+    sublabel: 'This month',
     icon: Phone,
     color: '#D97706',
     bgColor: '#FFFBEB',
   },
   {
-    label: 'Enrolled',
+    label: 'Families in Program',
     value: 156,
-    sublabel: 'This month',
+    sublabel: 'Enrolled in debt management',
     icon: CheckCircle,
     color: '#16A34A',
     bgColor: '#F0FDF4',
@@ -68,16 +68,16 @@ interface ActivityItem {
 }
 
 const DEMO_ACTIVITY: ActivityItem[] = [
-  { id: '1', action: 'Moved to In Counseling', prospect: 'Robert M. Fischer', location: 'Denver, CO', time: '12 min ago', type: 'status_change' },
-  { id: '2', action: 'New critical prospect detected', prospect: '1847 Elm Street', location: 'Chicago, IL', time: '28 min ago', type: 'new_prospect' },
+  { id: '1', action: 'Started counseling session', prospect: 'Robert M. Fischer', location: 'Denver, CO', time: '12 min ago', type: 'status_change' },
+  { id: '2', action: 'New household needs help', prospect: '1847 Elm Street', location: 'Chicago, IL', time: '28 min ago', type: 'new_prospect' },
   { id: '3', action: 'Added counselor note', prospect: 'Maria G. Santos', location: 'Atlanta, GA', time: '1 hr ago', type: 'note_added' },
-  { id: '4', action: 'Enrolled in DMP', prospect: 'James T. Winslow', location: 'Philadelphia, PA', time: '2 hr ago', type: 'status_change' },
-  { id: '5', action: 'New critical prospect detected', prospect: '2201 Oak Avenue', location: 'Boston, MA', time: '2 hr ago', type: 'new_prospect' },
-  { id: '6', action: 'Moved to Contacted', prospect: 'Linda K. Chen', location: 'Detroit, MI', time: '3 hr ago', type: 'status_change' },
-  { id: '7', action: 'New critical prospect detected', prospect: '990 Pine Road', location: 'Dallas, TX', time: '3 hr ago', type: 'new_prospect' },
+  { id: '4', action: 'Enrolled in debt management', prospect: 'James T. Winslow', location: 'Philadelphia, PA', time: '2 hr ago', type: 'status_change' },
+  { id: '5', action: 'New household needs help', prospect: '2201 Oak Avenue', location: 'Boston, MA', time: '2 hr ago', type: 'new_prospect' },
+  { id: '6', action: 'Outreach made', prospect: 'Linda K. Chen', location: 'Detroit, MI', time: '3 hr ago', type: 'status_change' },
+  { id: '7', action: 'New household needs help', prospect: '990 Pine Road', location: 'Dallas, TX', time: '3 hr ago', type: 'new_prospect' },
   { id: '8', action: 'Added counselor note', prospect: 'David A. Wright', location: 'Houston, TX', time: '4 hr ago', type: 'note_added' },
-  { id: '9', action: 'Moved to Reviewed', prospect: 'Sarah P. Nguyen', location: 'Miami, FL', time: '5 hr ago', type: 'status_change' },
-  { id: '10', action: 'Enrolled in DMP', prospect: 'Michael R. Brown', location: 'Los Angeles, CA', time: '6 hr ago', type: 'status_change' },
+  { id: '9', action: 'Flagged for counseling', prospect: 'Sarah P. Nguyen', location: 'Miami, FL', time: '5 hr ago', type: 'status_change' },
+  { id: '10', action: 'Enrolled in debt management', prospect: 'Michael R. Brown', location: 'Los Angeles, CA', time: '6 hr ago', type: 'status_change' },
 ];
 
 function getActivityIcon(type: string) {
@@ -132,7 +132,7 @@ export default function DashboardPage() {
           {greeting}
         </h1>
         <p className="text-gray-500 mt-1">
-          Here&apos;s what Beacon found in your markets today.
+          Here&apos;s who may need help in your community today.
         </p>
       </div>
 
@@ -210,8 +210,8 @@ export default function DashboardPage() {
                   <Users size={16} className="text-beacon-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-beacon-text">View Prospects</p>
-                  <p className="text-xs text-beacon-text-muted">Browse distressed homeowners</p>
+                  <p className="text-sm font-medium text-beacon-text">View Households</p>
+                  <p className="text-xs text-beacon-text-muted">Families who may need help</p>
                 </div>
                 <ArrowRight size={14} className="text-beacon-text-muted group-hover:text-beacon-text transition-colors" />
               </Link>
@@ -224,8 +224,8 @@ export default function DashboardPage() {
                   <MapPin size={16} className="text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-beacon-text">Open Map</p>
-                  <p className="text-xs text-beacon-text-muted">Market distress heatmap</p>
+                  <p className="text-sm font-medium text-beacon-text">Community Map</p>
+                  <p className="text-xs text-beacon-text-muted">Where people need help most</p>
                 </div>
                 <ArrowRight size={14} className="text-beacon-text-muted group-hover:text-beacon-text transition-colors" />
               </Link>
@@ -239,7 +239,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-beacon-text">My Assignments</p>
-                  <p className="text-xs text-beacon-text-muted">Prospects assigned to you</p>
+                  <p className="text-xs text-beacon-text-muted">Households assigned to you</p>
                 </div>
                 <ArrowRight size={14} className="text-beacon-text-muted group-hover:text-beacon-text transition-colors" />
               </Link>
@@ -248,14 +248,14 @@ export default function DashboardPage() {
 
           {/* Distress summary */}
           <div className="bg-white rounded-xl border border-beacon-border p-5">
-            <h2 className="text-sm font-semibold text-beacon-text mb-3">Signal Summary</h2>
+            <h2 className="text-sm font-semibold text-beacon-text mb-3">Distress Indicators</h2>
             <div className="space-y-2.5">
               {[
                 { label: 'Tax Delinquency', count: 8421, pct: 34, color: '#D97706' },
-                { label: 'Lis Pendens', count: 3102, pct: 13, color: '#DC2626' },
+                { label: 'Foreclosure Risk', count: 3102, pct: 13, color: '#DC2626' },
                 { label: 'LLC Dissolved', count: 2847, pct: 12, color: '#EA580C' },
-                { label: 'Long Hold', count: 6203, pct: 25, color: '#2563EB' },
-                { label: 'High Equity', count: 4012, pct: 16, color: '#16A34A' },
+                { label: 'Established Homeowner', count: 6203, pct: 25, color: '#2563EB' },
+                { label: 'Equity at Risk', count: 4012, pct: 16, color: '#16A34A' },
               ].map((s) => (
                 <div key={s.label}>
                   <div className="flex items-center justify-between text-xs mb-1">

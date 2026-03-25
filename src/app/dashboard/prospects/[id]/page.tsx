@@ -68,9 +68,9 @@ export default function ProspectDetailPage({
   if (!prospect) {
     return (
       <div className="text-center py-20">
-        <p className="text-beacon-text-muted">Prospect not found.</p>
+        <p className="text-beacon-text-muted">Household not found.</p>
         <Link href="/dashboard/prospects" className="text-sm text-beacon-primary mt-2 inline-block">
-          Back to Prospects
+          Back to Households
         </Link>
       </div>
     );
@@ -172,16 +172,25 @@ export default function ProspectDetailPage({
     setContactLoading(false);
   }
 
-  // Build "why this matters" explanation
+  // Build "what does this family need" explanation
   const equity = prospect.estimated_equity;
   const signalCount = prospect.signal_count;
+  const ownerLast = prospect.owner_name.split(' ').pop();
   let explanation = '';
+  let interventionWindow = '';
+  let suggestedService = '';
   if (prospect.compound_score >= 80) {
-    explanation = `This homeowner is showing ${signalCount} simultaneous distress signals. They have significant equity in their home (${formatCurrency(equity)}) but are unable to meet their financial obligations. They are a strong candidate for ACCC's debt management program — early intervention could help them avoid foreclosure and protect their equity.`;
+    explanation = `The ${ownerLast} family is at high risk of losing their home. They have ${formatCurrency(equity)} in home equity built over ${prospect.years_held} years that they stand to lose. With ${signalCount} simultaneous distress indicators, they may benefit from ACCC's debt management program — early intervention could help them avoid foreclosure and protect their family's wealth.`;
+    interventionWindow = 'Late stage — foreclosure or bankruptcy proceedings may already be underway. Immediate outreach recommended.';
+    suggestedService = prospect.has_bankruptcy ? 'Bankruptcy Counseling' : prospect.has_lis_pendens ? 'Foreclosure Prevention' : 'Debt Management Program (DMP)';
   } else if (prospect.is_long_hold && prospect.is_high_equity) {
-    explanation = `This homeowner purchased their property ${prospect.years_held} years ago for ${formatCurrency(prospect.last_sale_price)}. The property is now worth approximately ${formatCurrency(prospect.assessed_value)}, representing ${formatCurrency(equity)} in equity. They have significant assets to protect and strong motivation to find a debt solution.`;
+    explanation = `The ${ownerLast} family has lived in their home for ${prospect.years_held} years, building ${formatCurrency(equity)} in equity. They purchased for ${formatCurrency(prospect.last_sale_price)} and their home is now worth approximately ${formatCurrency(prospect.assessed_value)}. Without help, they could lose everything they've built.`;
+    interventionWindow = 'Mid stage — DMP is still viable but the window is narrowing. Proactive outreach recommended.';
+    suggestedService = 'Debt Management Program (DMP)';
   } else {
-    explanation = `This homeowner is showing early signs of financial distress with ${signalCount} signal(s) detected. With ${formatCurrency(equity)} in estimated equity, early outreach from ACCC could help them stabilize before the situation escalates.`;
+    explanation = `The ${ownerLast} family is showing early signs of financial hardship with ${signalCount} distress indicator(s). They have ${formatCurrency(equity)} in home equity worth protecting. Early outreach from ACCC could help them stabilize before the situation escalates.`;
+    interventionWindow = 'Early stage — DMP is viable and the family has time to course-correct with support.';
+    suggestedService = prospect.has_probate ? 'Housing Counseling' : 'Debt Management Program (DMP)';
   }
 
   return (
@@ -192,7 +201,7 @@ export default function ProspectDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-beacon-text-muted hover:text-beacon-primary transition-colors mb-6"
       >
         <ArrowLeft size={16} />
-        Back to Prospects
+        Back to Households
       </Link>
 
       {/* Header with score */}
@@ -209,9 +218,12 @@ export default function ProspectDetailPage({
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-3xl font-bold" style={{ color: scoreColor }}>
-                {prospect.compound_score}
-                <span className="text-base font-normal text-beacon-text-muted">/100</span>
+              <p className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Risk Level</p>
+              <p
+                className="text-2xl font-bold mt-0.5"
+                style={{ color: scoreColor }}
+              >
+                {scoreLabel}
               </p>
               <div className="w-32 h-2 bg-beacon-surface-alt rounded-full overflow-hidden mt-1">
                 <div
@@ -222,11 +234,8 @@ export default function ProspectDetailPage({
                   } as React.CSSProperties}
                 />
               </div>
-              <p
-                className="text-xs font-bold uppercase tracking-wider mt-1"
-                style={{ color: scoreColor }}
-              >
-                {scoreLabel}
+              <p className="text-[10px] text-beacon-text-muted mt-1">
+                {prospect.signal_count} distress indicator{prospect.signal_count !== 1 ? 's' : ''}
               </p>
             </div>
             <button
@@ -254,7 +263,7 @@ export default function ProspectDetailPage({
               <p className="text-lg font-bold text-beacon-text mt-0.5">{formatCurrency(prospect.assessed_value)}</p>
             </div>
             <div>
-              <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Est. Equity</p>
+              <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Equity at Stake</p>
               <p className="text-lg font-bold text-emerald-600 mt-0.5">{formatCurrency(prospect.estimated_equity)}</p>
             </div>
             <div>
@@ -281,7 +290,7 @@ export default function ProspectDetailPage({
         <div className="bg-white rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <AlertTriangle size={15} className="text-beacon-accent" />
-            Signal Summary
+            Distress Indicators
           </h2>
           <div className="space-y-2.5 mb-4">
             {signals.map((s) => {
@@ -321,7 +330,7 @@ export default function ProspectDetailPage({
 
       {/* Signal timeline chart */}
       <div className="bg-white rounded-xl border border-beacon-border p-5 mb-6">
-        <h2 className="text-sm font-semibold text-beacon-text mb-4">Signal Timeline</h2>
+        <h2 className="text-sm font-semibold text-beacon-text mb-4">How Long Has This Family Been Struggling?</h2>
         <ResponsiveContainer width="100%" height={Math.max(120, timelineData.length * 40)}>
           <BarChart data={timelineData} layout="vertical" barCategoryGap="20%">
             <XAxis type="number" hide />
@@ -364,7 +373,7 @@ export default function ProspectDetailPage({
 
       {/* Timeline event list */}
       <div className="bg-white rounded-xl border border-beacon-border p-5 mb-6">
-        <h2 className="text-sm font-semibold text-beacon-text mb-4">Event History</h2>
+        <h2 className="text-sm font-semibold text-beacon-text mb-4">Hardship Timeline</h2>
         <div className="relative">
           {/* Timeline line */}
           <div className="absolute left-4 top-2 bottom-2 w-px bg-beacon-border" />
@@ -398,13 +407,23 @@ export default function ProspectDetailPage({
         </div>
       </div>
 
-      {/* Why this matters */}
+      {/* What does this family need */}
       <div className="bg-beacon-primary-muted/50 rounded-xl border border-beacon-primary/10 p-5 mb-6">
         <h2 className="text-sm font-semibold text-beacon-primary-dark mb-2 flex items-center gap-2">
           <FileText size={15} />
-          Why This Matters
+          What Does This Family Need?
         </h2>
-        <p className="text-sm text-beacon-text-secondary leading-relaxed">{explanation}</p>
+        <p className="text-sm text-beacon-text-secondary leading-relaxed mb-4">{explanation}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-white/60 rounded-lg p-3">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Intervention Window</p>
+            <p className="text-xs text-beacon-text-secondary leading-relaxed">{interventionWindow}</p>
+          </div>
+          <div className="bg-white/60 rounded-lg p-3">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Suggested Service</p>
+            <p className="text-sm font-semibold text-beacon-primary-dark">{suggestedService}</p>
+          </div>
+        </div>
       </div>
 
       {/* Contact Information — Tracerfy skip trace */}
@@ -412,7 +431,7 @@ export default function ProspectDetailPage({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-beacon-text flex items-center gap-2">
             <Phone size={15} className="text-beacon-primary" />
-            Contact Information
+            Reach Out to Offer Help
           </h2>
           {!contactFetched && (
             <button
@@ -438,7 +457,7 @@ export default function ProspectDetailPage({
 
         {!contactFetched && !contactLoading && (
           <p className="text-xs text-beacon-text-muted">
-            Click &ldquo;Look Up Contact&rdquo; to retrieve phone and email for this prospect via skip trace.
+            Click &ldquo;Look Up Contact&rdquo; to find contact information so you can reach out and offer help.
           </p>
         )}
 
@@ -507,8 +526,19 @@ export default function ProspectDetailPage({
         )}
 
         {contactFetched && !contactInfo && !contactError && (
-          <p className="text-xs text-beacon-text-muted">No contact information found for this prospect.</p>
+          <p className="text-xs text-beacon-text-muted">No contact information found for this household.</p>
         )}
+
+        {/* Suggested outreach script */}
+        <div className="mt-4 p-3 bg-beacon-surface-alt rounded-lg border border-beacon-border">
+          <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1.5">Suggested Outreach Script</p>
+          <p className="text-xs text-beacon-text-secondary leading-relaxed italic">
+            &ldquo;Hi, my name is [your name] from American Consumer Credit Counseling.
+            We work with families in your area who are navigating financial challenges
+            and I wanted to reach out to see if we could be of any help. Our services
+            are free and confidential — would you have a few minutes to talk?&rdquo;
+          </p>
+        </div>
       </div>
 
       {/* Counselor notes + status */}
@@ -523,7 +553,7 @@ export default function ProspectDetailPage({
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add a note about this prospect..."
+              placeholder="Add a note about this household..."
               rows={3}
               className="w-full px-3 py-2.5 rounded-lg border border-beacon-border bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 resize-none"
             />
@@ -595,7 +625,7 @@ export default function ProspectDetailPage({
                 className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition-colors"
                 style={{ backgroundColor: '#CA8A04' }}
               >
-                Mark as Reviewed
+                Flag for Counseling
               </button>
             )}
             {status === 'reviewed' && (
@@ -604,7 +634,7 @@ export default function ProspectDetailPage({
                 className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition-colors"
                 style={{ backgroundColor: '#D97706' }}
               >
-                Mark as Contacted
+                Record Outreach
               </button>
             )}
             {status === 'contacted' && (

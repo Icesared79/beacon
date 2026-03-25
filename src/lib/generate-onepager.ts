@@ -22,22 +22,22 @@ export function generateOnePager(): jsPDF {
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('Financial Distress Intelligence for ACCC', 2.4, 0.55);
+  doc.text('Community Outreach Intelligence for ACCC', 2.4, 0.55);
 
   // Main headline
   doc.setTextColor(...NAVY);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('ACCC finds clients when they call.', 0.6, 1.35);
+  doc.text('ACCC finds families when they call.', 0.6, 1.35);
   doc.setTextColor(...ACCENT);
-  doc.text('Beacon finds them before they know to ask.', 0.6, 1.65);
+  doc.text('Beacon finds them before they know to ask for help.', 0.6, 1.65);
 
   // Body text
   doc.setTextColor(...TEXT);
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'normal');
   const bodyLines = doc.splitTextToSize(
-    'Beacon monitors property records across ACCC\'s 40+ operating markets and identifies homeowners showing early financial distress — before they reach crisis stage. ACCC counselors reach the right people at the right time — when a debt management plan can still help, and when there\'s equity worth protecting.',
+    'Beacon identifies families in financial hardship across ACCC\'s 40+ communities — before they reach crisis stage. ACCC counselors can offer help at the right time — when a debt management plan can still make a difference, and when there\'s equity worth protecting.',
     4.5
   );
   doc.text(bodyLines, 0.6, 2.1);
@@ -74,8 +74,8 @@ export function generateOnePager(): jsPDF {
   doc.text('HOW IT WORKS', 0.6, 5.0);
 
   const steps = [
-    ['Open Beacon', 'See high-priority prospects in your market'],
-    ['Review Signal Timeline', 'Understand the homeowner\'s full situation'],
+    ['Open Beacon', 'See families who need help in your community'],
+    ['Review Hardship Timeline', 'Understand the family\'s full situation'],
     ['Reach Out', 'With context that makes the conversation meaningful'],
   ];
 
@@ -105,9 +105,9 @@ export function generateOnePager(): jsPDF {
   doc.text('THREE VIEWS', 5.5, 1.35);
 
   const viewItems = [
-    { title: 'Distress Map', desc: 'Heat map of ACCC markets\nshowing signal density', color: PRIMARY },
-    { title: 'Prospect Feed', desc: 'Ranked homeowners\nmatching ACCC profile', color: ACCENT },
-    { title: 'Signal Timeline', desc: 'Individual property\ndistress arc', color: [22, 163, 74] as const },
+    { title: 'Community Map', desc: 'Where do families need\nhelp in your area?', color: PRIMARY },
+    { title: 'Household Feed', desc: 'Families who may need\nACCC services', color: ACCENT },
+    { title: 'Hardship Timeline', desc: 'How long has this family\nbeen struggling?', color: [22, 163, 74] as const },
   ];
 
   viewItems.forEach((v, i) => {

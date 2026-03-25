@@ -235,10 +235,10 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
 
         {/* Legend — positioned below the state grid */}
         {[
-          { label: 'Critical', color: '#DC2626', score: '80+' },
-          { label: 'High', color: '#D97706', score: '65-79' },
-          { label: 'Moderate', color: '#2563EB', score: '50-64' },
-          { label: 'Low', color: '#93C5FD', score: '30-49' },
+          { label: 'Urgent Need', color: '#DC2626', score: '80+' },
+          { label: 'High Need', color: '#D97706', score: '65-79' },
+          { label: 'Moderate Need', color: '#2563EB', score: '50-64' },
+          { label: 'Lower Need', color: '#93C5FD', score: '30-49' },
           { label: 'No data', color: '#E2E8F0', score: '<30' },
         ].map((item, i) => {
           const lx = PAD_X + i * 120;
@@ -318,7 +318,7 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
                   fontSize="9"
                   fontFamily="DM Sans, system-ui"
                 >
-                  Distress Score: {score}
+                  Community Need: {score}
                 </text>
               )}
               {office && (
@@ -342,8 +342,8 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
                     fontSize="8"
                     fontFamily="DM Sans, system-ui"
                   >
-                    {office.prospects ? `${formatNumber(office.prospects)} prospects` : ''}
-                    {office.critical ? ` · ${formatNumber(office.critical)} critical` : ''}
+                    {office.prospects ? `${formatNumber(office.prospects)} households` : ''}
+                    {office.critical ? ` · ${formatNumber(office.critical)} urgent` : ''}
                   </text>
                 </>
               )}

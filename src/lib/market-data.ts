@@ -72,8 +72,8 @@ export const MONTHLY_TREND = [
 
 export const SIGNAL_BREAKDOWN = [
   { name: 'Tax Delinquency', value: 34, color: '#D97706' },
-  { name: 'Long Hold + High Equity', value: 28, color: '#2563EB' },
-  { name: 'Lis Pendens', value: 16, color: '#DC2626' },
+  { name: 'Established + Equity at Risk', value: 28, color: '#2563EB' },
+  { name: 'Foreclosure Risk', value: 16, color: '#DC2626' },
   { name: 'LLC Dissolved', value: 12, color: '#EA580C' },
-  { name: 'Compound (3+)', value: 10, color: '#7C3AED' },
+  { name: 'Multiple Indicators (3+)', value: 10, color: '#7C3AED' },
 ];
