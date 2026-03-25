@@ -2,25 +2,18 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Download, ChevronLeft, ChevronRight, ArrowRight, X, Search, AlertTriangle, Home, Shield, Heart } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, ArrowRight, X, Search } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
 import { DEMO_PROSPECTS, getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-data';
-import type { SuggestedService, InterventionStage } from '@/lib/prospect-data';
+import type { InterventionStage } from '@/lib/prospect-data';
 import { cn, formatCurrency, formatNumber, getScoreColor, getScoreLabel } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
 
-const SERVICE_STYLES: Record<SuggestedService, { bg: string; text: string; icon: React.ElementType }> = {
-  'Foreclosure Prevention': { bg: 'bg-red-50', text: 'text-red-700', icon: Home },
-  'Bankruptcy Counseling': { bg: 'bg-amber-50', text: 'text-amber-700', icon: AlertTriangle },
-  'Housing Counseling': { bg: 'bg-purple-50', text: 'text-purple-700', icon: Shield },
-  'Debt Management': { bg: 'bg-blue-50', text: 'text-blue-700', icon: Heart },
-};
-
 const STAGE_STYLES: Record<InterventionStage, { color: string; label: string }> = {
-  Late: { color: '#DC2626', label: 'Urgent — act now' },
+  Late: { color: '#DC2626', label: 'Act now' },
   Mid: { color: '#D97706', label: 'Window narrowing' },
-  Early: { color: '#2563EB', label: 'Early — best outcomes' },
+  Early: { color: '#2563EB', label: 'Time to help' },
 };
 
 interface QuickFilter {
@@ -270,9 +263,7 @@ export default function ProspectsPage() {
                 const signals = getSignalsForProspect(prospect);
                 const service = getSuggestedService(prospect);
                 const stage = getInterventionStage(prospect);
-                const serviceStyle = SERVICE_STYLES[service];
                 const stageStyle = STAGE_STYLES[stage];
-                const ServiceIcon = serviceStyle.icon;
                 return (
                   <tr key={prospect.id} className="hover:bg-beacon-surface-alt/30 transition-colors group">
                     <td className="px-5 py-3.5">
@@ -318,21 +309,13 @@ export default function ProspectsPage() {
                             }}
                           />
                         </div>
-                        <span
-                          className="text-[9px] text-beacon-text-muted"
-                          style={{ color: stageStyle.color }}
-                        >
+                        <span className="text-[9px]" style={{ color: stageStyle.color }}>
                           {stageStyle.label}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg', serviceStyle.bg)}>
-                        <ServiceIcon size={12} className={serviceStyle.text} />
-                        <span className={cn('text-[10px] font-semibold', serviceStyle.text)}>
-                          {service}
-                        </span>
-                      </div>
+                      <p className="text-xs text-beacon-text-secondary">{service}</p>
                     </td>
                     <td className="px-3 py-3.5 text-center">
                       <Link
