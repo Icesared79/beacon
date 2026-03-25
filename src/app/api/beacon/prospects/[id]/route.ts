@@ -1,22 +1,30 @@
 import { NextRequest } from 'next/server';
-import { DEMO_PROSPECTS, getDemoSignalEvents } from '@/lib/prospect-data';
+import { getServiceClient } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const prospect = DEMO_PROSPECTS.find((p) => p.id === id);
+  const supabase = getServiceClient();
+  if (!supabase) {
+    return Response.json({ error: 'Database not configured' }, { status: 500 });
+  }
 
-  if (!prospect) {
+  const { id } = await params;
+
+  const { data: prospect, error } = await supabase
+    .from('beacon_prospects')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !prospect) {
     return Response.json({ error: 'Prospect not found' }, { status: 404 });
   }
 
-  const events = getDemoSignalEvents(id);
-
   return Response.json({
     prospect,
-    events,
+    events: [],
     activity: [],
   });
 }
@@ -25,14 +33,29 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = getServiceClient();
+  if (!supabase) {
+    return Response.json({ error: 'Database not configured' }, { status: 500 });
+  }
+
   const { id } = await params;
   const body = await request.json();
 
-  // TODO: Update in Supabase
-  return Response.json({
-    success: true,
-    id,
-    ...body,
-    updated_at: new Date().toISOString(),
-  });
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (body.status !== undefined) updates.status = body.status;
+  if (body.assigned_to !== undefined) updates.assigned_to = body.assigned_to;
+  if (body.note !== undefined) updates.notes = body.note;
+
+  const { data, error } = await supabase
+    .from('beacon_prospects')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+
+  return Response.json({ success: true, prospect: data });
 }
