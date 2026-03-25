@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   Calendar,
-  DollarSign,
+
   Home,
   Clock,
   AlertTriangle,
@@ -18,7 +18,7 @@ import {
   MapPin,
   Loader2,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
 import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
 import {
   DEMO_PROSPECTS,
@@ -79,17 +79,6 @@ export default function ProspectDetailPage({
   const scoreColor = getScoreColor(prospect.compound_score);
   const scoreLabel = getScoreLabel(prospect.compound_score);
 
-  // Build timeline chart data — group events by signal type with date ranges
-  const signalTypes = [...new Set(events.map((e) => e.signal_type))];
-  const timelineData = signalTypes.map((type) => {
-    const typeEvents = events.filter((e) => e.signal_type === type);
-    const def = SIGNAL_COLORS[type as keyof typeof SIGNAL_COLORS];
-    return {
-      name: def?.label || type,
-      events: typeEvents.length,
-      type,
-    };
-  });
 
   function handleAddNote() {
     if (!noteText.trim()) return;
@@ -326,49 +315,6 @@ export default function ProspectDetailPage({
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Signal timeline chart */}
-      <div className="bg-white rounded-xl border border-beacon-border p-5 mb-6">
-        <h2 className="text-sm font-semibold text-beacon-text mb-4">How Long Has This Family Been Struggling?</h2>
-        <ResponsiveContainer width="100%" height={Math.max(120, timelineData.length * 40)}>
-          <BarChart data={timelineData} layout="vertical" barCategoryGap="20%">
-            <XAxis type="number" hide />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={120}
-              tick={{ fontSize: 11, fill: '#475569' }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              formatter={(value) => [`${value} event(s)`, 'Detections']}
-              contentStyle={{
-                background: '#0F172A',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '12px',
-              }}
-            />
-            <Bar dataKey="events" radius={[0, 4, 4, 0]}>
-              {timelineData.map((entry) => {
-                const def = SIGNAL_COLORS[entry.type as keyof typeof SIGNAL_COLORS];
-                const colors: Record<string, string> = {
-                  lis_pendens: '#DC2626',
-                  tax_delinquency: '#D97706',
-                  llc_dissolved: '#EA580C',
-                  bankruptcy: '#DC2626',
-                  probate: '#7C3AED',
-                  long_hold: '#2563EB',
-                  high_equity: '#16A34A',
-                };
-                return <Cell key={entry.type} fill={colors[entry.type] || '#94A3B8'} />;
-              })}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
       </div>
 
       {/* Timeline event list */}
