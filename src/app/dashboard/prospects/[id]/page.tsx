@@ -105,13 +105,17 @@ export default function ProspectDetailPage({
   }
 
   const [contactError, setContactError] = useState('');
+  const [contactStatus, setContactStatus] = useState('');
 
   async function fetchContact() {
     if (!prospect) return;
     setContactLoading(true);
     setContactError('');
+    setContactStatus('Submitting lookup...');
+
     try {
-      const res = await fetch('/api/beacon/skip-trace', {
+      // Step 1: Submit the job
+      const submitRes = await fetch('/api/beacon/skip-trace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -122,14 +126,45 @@ export default function ProspectDetailPage({
           zip: prospect.zip,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setContactError(data.error || `Lookup failed (${res.status})`);
+      const submitData = await submitRes.json();
+      if (!submitRes.ok || !submitData.queueId) {
+        setContactError(submitData.error || `Lookup failed (${submitRes.status})`);
         setContactFetched(true);
-      } else {
-        setContactInfo(data);
-        setContactFetched(true);
+        setContactLoading(false);
+        return;
       }
+
+      const queueId = submitData.queueId;
+      setContactStatus('Searching records...');
+
+      // Step 2: Poll for results (client-side, 4s intervals, max 30 attempts)
+      for (let attempt = 0; attempt < 30; attempt++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        setContactStatus(`Searching records... (${attempt + 1})`);
+
+        try {
+          const pollRes = await fetch(`/api/beacon/skip-trace?queueId=${queueId}`);
+          const pollData = await pollRes.json();
+
+          if (pollData.status === 'complete') {
+            setContactInfo({
+              phones: pollData.phones || [],
+              emails: pollData.emails || [],
+              mailingAddress: pollData.mailingAddress || null,
+            });
+            setContactFetched(true);
+            setContactLoading(false);
+            return;
+          }
+          // status === 'pending' → keep polling
+        } catch {
+          // network blip, keep trying
+        }
+      }
+
+      // Timed out after all attempts
+      setContactError('Lookup timed out — Tracerfy did not return results. Try again later.');
+      setContactFetched(true);
     } catch (err) {
       setContactError('Network error — could not reach skip trace service');
       setContactFetched(true);
@@ -410,7 +445,7 @@ export default function ProspectDetailPage({
         {contactLoading && (
           <div className="flex items-center gap-2 text-xs text-beacon-text-muted">
             <Loader2 size={14} className="animate-spin" />
-            Searching records for {prospect.owner_name}...
+            {contactStatus || `Searching records for ${prospect.owner_name}...`}
           </div>
         )}
 

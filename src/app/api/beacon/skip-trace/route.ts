@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 120;
-
 const TRACERFY_BASE = 'https://tracerfy.com/v1/api';
-const POLL_INTERVAL_MS = 4000;
-const MAX_POLL_ATTEMPTS = 25;
 
 function parseOwnerName(ownerName: string): { firstName: string; lastName: string } {
   const trimmed = ownerName.trim();
@@ -45,17 +41,14 @@ function mapTracerfyRow(data: Record<string, unknown>): SkipTraceResult {
   if (primaryPhone?.trim()) {
     phones.push({ number: primaryPhone.trim(), type: 'Primary' });
   }
-
   for (let i = 1; i <= 5; i++) {
     const phone = getField(data, `Mobile-${i}`, `mobile_${i}`, `mobile-${i}`);
     if (phone?.trim()) phones.push({ number: phone.trim(), type: 'Mobile' });
   }
-
   for (let i = 1; i <= 3; i++) {
     const phone = getField(data, `Landline-${i}`, `landline_${i}`, `landline-${i}`);
     if (phone?.trim()) phones.push({ number: phone.trim(), type: 'Landline' });
   }
-
   for (let i = 1; i <= 5; i++) {
     const email = getField(data, `Email-${i}`, `email_${i}`, `email-${i}`);
     if (email?.trim()) emails.push(email.trim());
@@ -118,48 +111,24 @@ function parseCSVToRecords(csvText: string): Record<string, unknown>[] {
   return records;
 }
 
-async function fetchResultsFromDownload(
-  downloadUrl: string,
-  apiKey: string
-): Promise<Record<string, unknown>[]> {
-  try {
-    const dlRes = await fetch(downloadUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    if (!dlRes.ok) return [];
-    const contentType = dlRes.headers.get('content-type') || '';
-    if (contentType.includes('json')) {
-      const dlData = await dlRes.json();
-      if (Array.isArray(dlData)) return dlData as Record<string, unknown>[];
-      return [];
-    } else {
-      const csvText = await dlRes.text();
-      return parseCSVToRecords(csvText);
-    }
-  } catch {
-    return [];
-  }
-}
-
+// ──────────────────────────────────────────────────────────────────
+// POST — Submit a skip trace job to Tracerfy. Returns { queueId }.
+// Completes in <5s so it fits within Vercel Hobby 10s limit.
+// ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const { name, address, city, state, zip } = await req.json();
 
   const apiKey = process.env.TRACERFY_API_KEY;
   if (!apiKey) {
-    return NextResponse.json(
-      { error: 'Skip trace not configured' },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: 'Skip trace not configured' }, { status: 503 });
   }
 
   const { firstName, lastName } = parseOwnerName(name);
 
-  // Build single-row CSV for Tracerfy batch API
   const csvHeader = 'first_name,last_name,address,city,state,mail_address,mail_city,mail_state';
   const csvRow = [firstName, lastName, address, city, state, '', '', ''].map(csvQuote).join(',');
   const csvContent = csvHeader + '\n' + csvRow;
 
-  // Submit to Tracerfy
   const formData = new FormData();
   formData.append('csv_file', new Blob([csvContent], { type: 'text/csv' }), 'lookup.csv');
   formData.append('first_name_column', 'first_name');
@@ -171,7 +140,6 @@ export async function POST(req: NextRequest) {
   formData.append('mail_city_column', 'mail_city');
   formData.append('mail_state_column', 'mail_state');
 
-  let queueId: string;
   try {
     const submitRes = await fetch(`${TRACERFY_BASE}/trace/`, {
       method: 'POST',
@@ -181,75 +149,106 @@ export async function POST(req: NextRequest) {
 
     if (!submitRes.ok) {
       const errText = await submitRes.text();
-      console.error(`[beacon-skip-trace] Submit failed (${submitRes.status}): ${errText}`);
-      return NextResponse.json({ error: 'Contact lookup temporarily unavailable', detail: errText }, { status: 502 });
+      console.error(`[skip-trace] Submit failed (${submitRes.status}): ${errText}`);
+      return NextResponse.json({ error: 'Contact lookup temporarily unavailable' }, { status: 502 });
     }
 
     const submitData = await submitRes.json();
-    console.log('[beacon-skip-trace] Submit response:', JSON.stringify(submitData));
-    queueId = String(submitData.queue_id ?? submitData.id ?? '');
+    console.log('[skip-trace] Submit response:', JSON.stringify(submitData));
+    const queueId = String(submitData.queue_id ?? submitData.id ?? '');
     if (!queueId) {
-      return NextResponse.json({ error: 'Failed to queue lookup', detail: submitData }, { status: 502 });
+      return NextResponse.json({ error: 'Failed to queue lookup' }, { status: 502 });
     }
+
+    return NextResponse.json({ queueId });
   } catch (err) {
-    console.error('[beacon-skip-trace] Submit error:', err);
+    console.error('[skip-trace] Submit error:', err);
     return NextResponse.json({ error: 'Failed to submit lookup' }, { status: 502 });
   }
+}
 
-  // Poll for results
-  let pollResults: Record<string, unknown>[] = [];
-
-  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-
-    try {
-      const pollRes = await fetch(`${TRACERFY_BASE}/queue/${queueId}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      if (!pollRes.ok) {
-        console.log(`[beacon-skip-trace] Poll ${attempt + 1}: HTTP ${pollRes.status}`);
-        continue;
-      }
-      const pollData = await pollRes.json();
-
-      if (Array.isArray(pollData) && pollData.length > 0) {
-        pollResults = pollData as Record<string, unknown>[];
-        break;
-      }
-
-      if (pollData && typeof pollData === 'object' && !Array.isArray(pollData)) {
-        const obj = pollData as Record<string, unknown>;
-        const isPending = obj.pending === true || obj.status === 'pending' || obj.status === 'processing';
-
-        if (!isPending && obj.download_url) {
-          pollResults = await fetchResultsFromDownload(obj.download_url as string, apiKey);
-          break;
-        }
-
-        if (!isPending && !obj.download_url) break;
-        continue;
-      }
-
-      if (Array.isArray(pollData) && pollData.length === 0) continue;
-    } catch {
-      // continue polling
-    }
+// ──────────────────────────────────────────────────────────────────
+// GET — Poll for results. Client calls this repeatedly until done.
+// Each call is a single check — completes in <5s.
+// ──────────────────────────────────────────────────────────────────
+export async function GET(req: NextRequest) {
+  const queueId = req.nextUrl.searchParams.get('queueId');
+  if (!queueId) {
+    return NextResponse.json({ error: 'Missing queueId' }, { status: 400 });
   }
 
-  if (pollResults.length === 0) {
-    return NextResponse.json({
-      phones: [],
-      emails: [],
-      mailingAddress: null,
+  const apiKey = process.env.TRACERFY_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Skip trace not configured' }, { status: 503 });
+  }
+
+  try {
+    const pollRes = await fetch(`${TRACERFY_BASE}/queue/${queueId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
+
+    if (!pollRes.ok) {
+      console.log(`[skip-trace] Poll HTTP ${pollRes.status}`);
+      return NextResponse.json({ status: 'pending' });
+    }
+
+    const pollData = await pollRes.json();
+
+    // Format A: Array of result objects
+    if (Array.isArray(pollData) && pollData.length > 0) {
+      const result = mapTracerfyRow(pollData[0] as Record<string, unknown>);
+      return NextResponse.json({ status: 'complete', ...result });
+    }
+
+    // Format B: Status object with download_url
+    if (pollData && typeof pollData === 'object' && !Array.isArray(pollData)) {
+      const obj = pollData as Record<string, unknown>;
+      const isPending = obj.pending === true || obj.status === 'pending' || obj.status === 'processing';
+
+      if (!isPending && obj.download_url) {
+        // Fetch and parse the download
+        try {
+          const dlRes = await fetch(obj.download_url as string, {
+            headers: { Authorization: `Bearer ${apiKey}` },
+          });
+          if (dlRes.ok) {
+            const contentType = dlRes.headers.get('content-type') || '';
+            let records: Record<string, unknown>[] = [];
+            if (contentType.includes('json')) {
+              const dlData = await dlRes.json();
+              if (Array.isArray(dlData)) records = dlData as Record<string, unknown>[];
+            } else {
+              const csvText = await dlRes.text();
+              records = parseCSVToRecords(csvText);
+            }
+            if (records.length > 0) {
+              const result = mapTracerfyRow(records[0]);
+              return NextResponse.json({ status: 'complete', ...result });
+            }
+          }
+        } catch {
+          // fall through
+        }
+        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+      }
+
+      if (!isPending && !obj.download_url) {
+        // Complete but no results
+        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
+      }
+
+      // Still pending
+      return NextResponse.json({ status: 'pending' });
+    }
+
+    // Format C: Empty array — still processing
+    if (Array.isArray(pollData) && pollData.length === 0) {
+      return NextResponse.json({ status: 'pending' });
+    }
+
+    return NextResponse.json({ status: 'pending' });
+  } catch (err) {
+    console.error('[skip-trace] Poll error:', err);
+    return NextResponse.json({ status: 'pending' });
   }
-
-  const result = mapTracerfyRow(pollResults[0]);
-
-  return NextResponse.json({
-    phones: result.phones,
-    emails: result.emails,
-    mailingAddress: result.mailingAddress,
-  });
 }
