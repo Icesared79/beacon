@@ -215,6 +215,23 @@ export function getSignalsForProspect(p: Prospect): string[] {
   return signals;
 }
 
+export type SuggestedService = 'Foreclosure Prevention' | 'Bankruptcy Counseling' | 'Housing Counseling' | 'Debt Management';
+
+export function getSuggestedService(p: Prospect): SuggestedService {
+  if (p.has_lis_pendens) return 'Foreclosure Prevention';
+  if (p.has_bankruptcy) return 'Bankruptcy Counseling';
+  if (p.has_probate) return 'Housing Counseling';
+  return 'Debt Management';
+}
+
+export type InterventionStage = 'Early' | 'Mid' | 'Late';
+
+export function getInterventionStage(p: Prospect): InterventionStage {
+  if (p.compound_score >= 80) return 'Late';
+  if (p.compound_score >= 65) return 'Mid';
+  return 'Early';
+}
+
 export function getDemoSignalEvents(prospectId: string): SignalEvent[] {
   const prospect = DEMO_PROSPECTS.find((p) => p.id === prospectId);
   if (!prospect) return [];

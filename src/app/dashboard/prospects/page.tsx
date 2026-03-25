@@ -2,19 +2,73 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Download, ChevronLeft, ChevronRight, ArrowRight, X, Search, Phone } from 'lucide-react';
-import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
-import { DEMO_PROSPECTS, getSignalsForProspect } from '@/lib/prospect-data';
+import { Download, ChevronLeft, ChevronRight, ArrowRight, X, Search, AlertTriangle, Home, Shield, Heart } from 'lucide-react';
+import { SIGNAL_COLORS } from '@/lib/design-tokens';
+import { DEMO_PROSPECTS, getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-data';
+import type { SuggestedService, InterventionStage } from '@/lib/prospect-data';
 import { cn, formatCurrency, formatNumber, getScoreColor, getScoreLabel } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
 
+const SERVICE_STYLES: Record<SuggestedService, { bg: string; text: string; icon: React.ElementType }> = {
+  'Foreclosure Prevention': { bg: 'bg-red-50', text: 'text-red-700', icon: Home },
+  'Bankruptcy Counseling': { bg: 'bg-amber-50', text: 'text-amber-700', icon: AlertTriangle },
+  'Housing Counseling': { bg: 'bg-purple-50', text: 'text-purple-700', icon: Shield },
+  'Debt Management': { bg: 'bg-blue-50', text: 'text-blue-700', icon: Heart },
+};
+
+const STAGE_STYLES: Record<InterventionStage, { color: string; label: string }> = {
+  Late: { color: '#DC2626', label: 'Urgent — act now' },
+  Mid: { color: '#D97706', label: 'Window narrowing' },
+  Early: { color: '#2563EB', label: 'Early — best outcomes' },
+};
+
+interface QuickFilter {
+  id: string;
+  label: string;
+  description: string;
+  apply: (p: typeof DEMO_PROSPECTS[number]) => boolean;
+}
+
+const QUICK_FILTERS: QuickFilter[] = [
+  {
+    id: 'urgent',
+    label: 'Urgent',
+    description: 'Families who need immediate help',
+    apply: (p) => p.compound_score >= 80,
+  },
+  {
+    id: 'foreclosure',
+    label: 'Facing Foreclosure',
+    description: 'Active foreclosure proceedings',
+    apply: (p) => p.has_lis_pendens,
+  },
+  {
+    id: 'high_equity',
+    label: 'Most Equity at Risk',
+    description: 'Over $200K at stake',
+    apply: (p) => p.estimated_equity >= 200000,
+  },
+  {
+    id: 'bankruptcy',
+    label: 'Bankruptcy Filed',
+    description: 'May need bankruptcy counseling',
+    apply: (p) => p.has_bankruptcy,
+  },
+  {
+    id: 'early',
+    label: 'Early Stage',
+    description: 'Best chance for DMP success',
+    apply: (p) => p.compound_score < 65,
+  },
+];
+
 export default function ProspectsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [officeFilter, setOfficeFilter] = useState('');
   const [signalFilter, setSignalFilter] = useState('');
-  const [minScore, setMinScore] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [serviceFilter, setServiceFilter] = useState('');
+  const [nameSearch, setNameSearch] = useState('');
   const [page, setPage] = useState(0);
 
   const offices = useMemo(
@@ -24,55 +78,65 @@ export default function ProspectsPage() {
 
   const filtered = useMemo(() => {
     let data = DEMO_PROSPECTS;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+
+    // Quick filter
+    if (activeQuickFilter) {
+      const qf = QUICK_FILTERS.find((f) => f.id === activeQuickFilter);
+      if (qf) data = data.filter(qf.apply);
+    }
+
+    // Name/address lookup
+    if (nameSearch) {
+      const q = nameSearch.toLowerCase();
       data = data.filter((p) =>
         p.owner_name.toLowerCase().includes(q) ||
         p.address.toLowerCase().includes(q) ||
-        p.city.toLowerCase().includes(q) ||
         p.zip.includes(q)
       );
     }
+
     if (officeFilter) data = data.filter((p) => p.office_city === officeFilter);
-    if (statusFilter) data = data.filter((p) => p.status === statusFilter);
-    if (minScore > 0) data = data.filter((p) => p.compound_score >= minScore);
     if (signalFilter) {
       data = data.filter((p) => {
         const signals = getSignalsForProspect(p);
         return signals.includes(signalFilter);
       });
     }
+    if (serviceFilter) {
+      data = data.filter((p) => getSuggestedService(p) === serviceFilter);
+    }
+
     return data.sort((a, b) => b.compound_score - a.compound_score);
-  }, [searchQuery, officeFilter, signalFilter, minScore, statusFilter]);
+  }, [activeQuickFilter, nameSearch, officeFilter, signalFilter, serviceFilter]);
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const hasFilters = searchQuery || officeFilter || signalFilter || minScore > 0 || statusFilter;
+  const hasFilters = activeQuickFilter || officeFilter || signalFilter || serviceFilter || nameSearch;
 
   function clearFilters() {
-    setSearchQuery('');
+    setActiveQuickFilter(null);
     setOfficeFilter('');
     setSignalFilter('');
-    setMinScore(0);
-    setStatusFilter('');
+    setServiceFilter('');
+    setNameSearch('');
     setPage(0);
   }
 
   function exportCSV() {
-    const header = 'Address,City,State,Owner,Score,Signals,Status\n';
+    const header = 'Address,City,State,Owner,Risk Score,Indicators,Suggested Service,Intervention Stage\n';
     const rows = filtered.map((p) => {
       const signals = getSignalsForProspect(p)
         .map((s) => SIGNAL_COLORS[s as keyof typeof SIGNAL_COLORS]?.label || s)
         .join('; ');
-      return `"${p.address}","${p.city}","${p.state}","${p.owner_name}",${p.compound_score},"${signals}","${p.status}"`;
+      return `"${p.address}","${p.city}","${p.state}","${p.owner_name}",${p.compound_score},"${signals}","${getSuggestedService(p)}","${getInterventionStage(p)}"`;
     });
     const csv = header + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `beacon-prospects-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `beacon-households-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -96,29 +160,51 @@ export default function ProspectsPage() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-3 h-4 w-4 text-beacon-text-muted" />
-        <input
-          type="text"
-          placeholder="Search by name, address, city, or ZIP..."
-          value={searchQuery}
-          onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
-          className="w-full pl-10 pr-10 py-2.5 border border-beacon-border rounded-lg bg-white text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 focus:border-beacon-primary transition-all"
-        />
-        {searchQuery && (
+      {/* Quick filters */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {QUICK_FILTERS.map((qf) => (
           <button
-            onClick={() => { setSearchQuery(''); setPage(0); }}
-            className="absolute right-3.5 top-3 text-beacon-text-muted hover:text-beacon-text transition-colors"
+            key={qf.id}
+            onClick={() => {
+              setActiveQuickFilter(activeQuickFilter === qf.id ? null : qf.id);
+              setPage(0);
+            }}
+            className={cn(
+              'px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all',
+              activeQuickFilter === qf.id
+                ? 'bg-beacon-primary text-white border-beacon-primary shadow-sm'
+                : 'bg-white text-beacon-text-secondary border-beacon-border hover:bg-beacon-surface-alt hover:border-beacon-border-dark'
+            )}
+            title={qf.description}
           >
-            <X className="h-4 w-4" />
+            {qf.label}
           </button>
-        )}
+        ))}
       </div>
 
-      {/* Filters */}
+      {/* Filter bar */}
       <div className="bg-white rounded-xl border border-beacon-border p-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
+          {/* Name/address/ZIP lookup */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted" />
+            <input
+              type="text"
+              placeholder="Name, address, or ZIP"
+              value={nameSearch}
+              onChange={(e) => { setNameSearch(e.target.value); setPage(0); }}
+              className="pl-8 pr-8 py-2 w-52 border border-beacon-border rounded-lg bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
+            />
+            {nameSearch && (
+              <button
+                onClick={() => { setNameSearch(''); setPage(0); }}
+                className="absolute right-2.5 top-2.5 text-beacon-text-muted hover:text-beacon-text"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
           <select
             value={officeFilter}
             onChange={(e) => { setOfficeFilter(e.target.value); setPage(0); }}
@@ -142,25 +228,15 @@ export default function ProspectsPage() {
           </select>
 
           <select
-            value={minScore}
-            onChange={(e) => { setMinScore(Number(e.target.value)); setPage(0); }}
+            value={serviceFilter}
+            onChange={(e) => { setServiceFilter(e.target.value); setPage(0); }}
             className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
           >
-            <option value={0}>Min Risk Level</option>
-            <option value={40}>40+</option>
-            <option value={60}>60+</option>
-            <option value={80}>80+</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-            className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
-          >
-            <option value="">All Statuses</option>
-            {STATUS_FLOW.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            <option value="">All Services</option>
+            <option value="Debt Management">Debt Management</option>
+            <option value="Foreclosure Prevention">Foreclosure Prevention</option>
+            <option value="Bankruptcy Counseling">Bankruptcy Counseling</option>
+            <option value="Housing Counseling">Housing Counseling</option>
           </select>
 
           {hasFilters && (
@@ -169,13 +245,13 @@ export default function ProspectsPage() {
               className="flex items-center gap-1 text-xs font-medium text-beacon-text-muted hover:text-beacon-text transition-colors"
             >
               <X size={14} />
-              Clear
+              Clear all
             </button>
           )}
         </div>
       </div>
 
-      {/* Prospect table */}
+      {/* Household table */}
       <div className="bg-white rounded-xl border border-beacon-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -185,14 +261,18 @@ export default function ProspectsPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Homeowner</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Distress Indicators</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Risk Level</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Suggested Service</th>
                 <th className="text-center px-3 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-12"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-beacon-border">
               {pageData.map((prospect) => {
                 const signals = getSignalsForProspect(prospect);
-                const statusDef = STATUS_FLOW.find((s) => s.value === prospect.status);
+                const service = getSuggestedService(prospect);
+                const stage = getInterventionStage(prospect);
+                const serviceStyle = SERVICE_STYLES[service];
+                const stageStyle = STAGE_STYLES[stage];
+                const ServiceIcon = serviceStyle.icon;
                 return (
                   <tr key={prospect.id} className="hover:bg-beacon-surface-alt/30 transition-colors group">
                     <td className="px-5 py-3.5">
@@ -222,12 +302,12 @@ export default function ProspectsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <div className="inline-flex flex-col items-center gap-1">
+                      <div className="inline-flex flex-col items-center gap-0.5">
                         <span
-                          className="text-sm font-bold"
+                          className="text-xs font-bold uppercase tracking-wider"
                           style={{ color: getScoreColor(prospect.compound_score) }}
                         >
-                          {prospect.compound_score}
+                          {getScoreLabel(prospect.compound_score)}
                         </span>
                         <div className="w-12 h-1.5 bg-beacon-surface-alt rounded-full overflow-hidden">
                           <div
@@ -238,18 +318,21 @@ export default function ProspectsPage() {
                             }}
                           />
                         </div>
-                        <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: getScoreColor(prospect.compound_score) }}>
-                          {getScoreLabel(prospect.compound_score)}
+                        <span
+                          className="text-[9px] text-beacon-text-muted"
+                          style={{ color: stageStyle.color }}
+                        >
+                          {stageStyle.label}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span
-                        className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold text-white"
-                        style={{ backgroundColor: statusDef?.color || '#94A3B8' }}
-                      >
-                        {statusDef?.label || prospect.status}
-                      </span>
+                    <td className="px-4 py-3.5">
+                      <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg', serviceStyle.bg)}>
+                        <ServiceIcon size={12} className={serviceStyle.text} />
+                        <span className={cn('text-[10px] font-semibold', serviceStyle.text)}>
+                          {service}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-3 py-3.5 text-center">
                       <Link
