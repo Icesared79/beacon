@@ -104,9 +104,12 @@ export default function ProspectDetailPage({
     setStatus(newStatus);
   }
 
+  const [contactError, setContactError] = useState('');
+
   async function fetchContact() {
     if (!prospect) return;
     setContactLoading(true);
+    setContactError('');
     try {
       const res = await fetch('/api/beacon/skip-trace', {
         method: 'POST',
@@ -120,9 +123,15 @@ export default function ProspectDetailPage({
         }),
       });
       const data = await res.json();
-      setContactInfo(data);
-      setContactFetched(true);
-    } catch {
+      if (!res.ok) {
+        setContactError(data.error || `Lookup failed (${res.status})`);
+        setContactFetched(true);
+      } else {
+        setContactInfo(data);
+        setContactFetched(true);
+      }
+    } catch (err) {
+      setContactError('Network error — could not reach skip trace service');
       setContactFetched(true);
     }
     setContactLoading(false);
@@ -458,7 +467,11 @@ export default function ProspectDetailPage({
           </div>
         )}
 
-        {contactFetched && !contactInfo && (
+        {contactFetched && contactError && (
+          <p className="text-xs text-red-600">{contactError}</p>
+        )}
+
+        {contactFetched && !contactInfo && !contactError && (
           <p className="text-xs text-beacon-text-muted">No contact information found for this prospect.</p>
         )}
       </div>

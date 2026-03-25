@@ -133,8 +133,10 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
   const GAP = 3;
   const PAD_X = 10;
   const PAD_Y = 10;
+  const LEGEND_H = 40;
   const totalW = PAD_X * 2 + 11 * (TILE_W + GAP);
-  const totalH = PAD_Y * 2 + 7 * (TILE_H + GAP);
+  const gridH = PAD_Y * 2 + 7 * (TILE_H + GAP);
+  const totalH = gridH + LEGEND_H;
 
   // Project lat/lng to SVG coordinates for office dots
   function projectPoint(lat: number, lng: number): [number, number] {
@@ -231,7 +233,7 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
           );
         })}
 
-        {/* Legend */}
+        {/* Legend — positioned below the state grid */}
         {[
           { label: 'Critical', color: '#DC2626', score: '80+' },
           { label: 'High', color: '#D97706', score: '65-79' },
@@ -240,7 +242,7 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
           { label: 'No data', color: '#E2E8F0', score: '<30' },
         ].map((item, i) => {
           const lx = PAD_X + i * 120;
-          const ly = totalH - 26;
+          const ly = gridH + 10;
           return (
             <g key={item.label}>
               <rect x={lx} y={ly} width={12} height={12} rx={2} fill={item.color} opacity={0.88} />
@@ -260,10 +262,10 @@ export function USMap({ offices, stateScores, onOfficeClick }: USMapProps) {
 
         {/* ACCC office legend */}
         <g>
-          <circle cx={PAD_X + 605} cy={totalH - 20} r={3.5} fill="#1B5EA8" stroke="#FFFFFF" strokeWidth={1.5} />
+          <circle cx={PAD_X + 605} cy={gridH + 16} r={3.5} fill="#1B5EA8" stroke="#FFFFFF" strokeWidth={1.5} />
           <text
             x={PAD_X + 613}
-            y={totalH - 20}
+            y={gridH + 16}
             dominantBaseline="central"
             fill="#475569"
             fontSize="9"

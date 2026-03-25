@@ -180,15 +180,19 @@ export async function POST(req: NextRequest) {
     });
 
     if (!submitRes.ok) {
-      return NextResponse.json({ error: 'Contact lookup temporarily unavailable' }, { status: 502 });
+      const errText = await submitRes.text();
+      console.error(`[beacon-skip-trace] Submit failed (${submitRes.status}): ${errText}`);
+      return NextResponse.json({ error: 'Contact lookup temporarily unavailable', detail: errText }, { status: 502 });
     }
 
     const submitData = await submitRes.json();
+    console.log('[beacon-skip-trace] Submit response:', JSON.stringify(submitData));
     queueId = String(submitData.queue_id ?? submitData.id ?? '');
     if (!queueId) {
-      return NextResponse.json({ error: 'Failed to queue lookup' }, { status: 502 });
+      return NextResponse.json({ error: 'Failed to queue lookup', detail: submitData }, { status: 502 });
     }
-  } catch {
+  } catch (err) {
+    console.error('[beacon-skip-trace] Submit error:', err);
     return NextResponse.json({ error: 'Failed to submit lookup' }, { status: 502 });
   }
 
@@ -203,7 +207,10 @@ export async function POST(req: NextRequest) {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
 
-      if (!pollRes.ok) continue;
+      if (!pollRes.ok) {
+        console.log(`[beacon-skip-trace] Poll ${attempt + 1}: HTTP ${pollRes.status}`);
+        continue;
+      }
       const pollData = await pollRes.json();
 
       if (Array.isArray(pollData) && pollData.length > 0) {
