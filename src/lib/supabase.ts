@@ -32,8 +32,7 @@ export function getServiceClient() {
 }
 
 export function getBrowserClient() {
-  const url = getUrl()
-  const key = getAnonKey()
-  if (!url || !key) return null as unknown as ReturnType<typeof createBrowserClient>
+  const url = getUrl() || 'https://placeholder.supabase.co'
+  const key = getAnonKey() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder'
   return createBrowserClient(url, key)
 }
