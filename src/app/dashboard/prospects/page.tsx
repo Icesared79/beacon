@@ -247,16 +247,23 @@ export default function ProspectsPage() {
       {/* Household table */}
       <div className="bg-white rounded-xl border border-beacon-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[22%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[30%]" />
+              <col className="w-[16%]" />
+              <col className="w-[4%]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
-                <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Address</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Homeowner</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Equity at Stake</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Homeowner</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Property</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Equity</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Distress Indicators</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Risk Level</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Suggested Service</th>
-                <th className="text-center px-3 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-12"></th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Action Needed</th>
+                <th className="w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-beacon-border">
@@ -268,25 +275,25 @@ export default function ProspectsPage() {
                 return (
                   <tr key={prospect.id} className="hover:bg-beacon-surface-alt/30 transition-colors group">
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-medium text-beacon-text">{prospect.address}</p>
-                      <p className="text-xs text-beacon-text-muted">{prospect.city}, {prospect.state} {prospect.zip}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <p className="text-sm text-beacon-text">{prospect.owner_name}</p>
+                      <p className="text-sm font-medium text-beacon-text truncate">{prospect.owner_name}</p>
                       <p className="text-xs text-beacon-text-muted">{prospect.years_held}yr homeowner</p>
                     </td>
+                    <td className="px-4 py-3.5">
+                      <p className="text-sm text-beacon-text truncate">{prospect.address}</p>
+                      <p className="text-xs text-beacon-text-muted">{prospect.city}, {prospect.state} {prospect.zip}</p>
+                    </td>
                     <td className="px-4 py-3.5 text-right">
-                      <p className="text-sm font-medium text-beacon-text">{formatCurrency(prospect.estimated_equity)}</p>
+                      <p className="text-sm font-semibold text-beacon-text">{formatCurrency(prospect.estimated_equity)}</p>
                     </td>
                     <td className="px-4 py-3.5">
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1">
                         {signals.map((s) => {
                           const def = SIGNAL_COLORS[s as keyof typeof SIGNAL_COLORS];
                           if (!def) return null;
                           return (
                             <span
                               key={s}
-                              className={cn('inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold', def.bg, def.text)}
+                              className={cn('inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold', def.bg, def.text)}
                             >
                               {def.label}
                             </span>
@@ -294,37 +301,21 @@ export default function ProspectsPage() {
                         })}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="inline-flex flex-col items-center gap-0.5">
-                        <span
-                          className="text-xs font-bold uppercase tracking-wider"
-                          style={{ color: getScoreColor(prospect.compound_score) }}
-                        >
-                          {getScoreLabel(prospect.compound_score)}
-                        </span>
-                        <div className="w-12 h-1.5 bg-beacon-surface-alt rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${prospect.compound_score}%`,
-                              backgroundColor: getScoreColor(prospect.compound_score),
-                            }}
-                          />
-                        </div>
-                        <span className="text-[9px]" style={{ color: stageStyle.color }}>
-                          {stageStyle.label}
-                        </span>
-                      </div>
-                    </td>
                     <td className="px-4 py-3.5">
-                      <p className="text-xs text-beacon-text-secondary">{service}</p>
+                      <p
+                        className="text-xs font-bold uppercase tracking-wider"
+                        style={{ color: stageStyle.color }}
+                      >
+                        {getScoreLabel(prospect.compound_score)}
+                      </p>
+                      <p className="text-xs text-beacon-text-secondary mt-0.5">{service}</p>
                     </td>
-                    <td className="px-3 py-3.5 text-center">
+                    <td className="px-2 py-3.5 text-center">
                       <Link
                         href={`/dashboard/prospects/${prospect.id}`}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-beacon-text-muted hover:bg-beacon-primary-muted hover:text-beacon-primary transition-colors"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-beacon-text-muted hover:bg-beacon-primary-muted hover:text-beacon-primary transition-colors"
                       >
-                        <ArrowRight size={16} />
+                        <ArrowRight size={15} />
                       </Link>
                     </td>
                   </tr>
