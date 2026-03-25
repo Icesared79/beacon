@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Download, ChevronLeft, ChevronRight, ArrowRight, X, Search } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown, ArrowUp, X, Search } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
 import { DEMO_PROSPECTS, getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-data';
 import type { InterventionStage } from '@/lib/prospect-data';
-import { cn, formatCurrency, formatNumber, getScoreColor, getScoreLabel } from '@/lib/utils';
+import { cn, formatCurrency, formatNumber, getScoreLabel } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
 
@@ -56,12 +56,17 @@ const QUICK_FILTERS: QuickFilter[] = [
   },
 ];
 
+type SortField = 'risk' | 'years' | 'equity';
+type SortDir = 'desc' | 'asc';
+
 export default function ProspectsPage() {
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [officeFilter, setOfficeFilter] = useState('');
   const [signalFilter, setSignalFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
   const [nameSearch, setNameSearch] = useState('');
+  const [sortField, setSortField] = useState<SortField>('risk');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
 
   const offices = useMemo(
@@ -69,16 +74,31 @@ export default function ProspectsPage() {
     []
   );
 
-  const filtered = useMemo(() => {
-    let data = DEMO_PROSPECTS;
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir(sortDir === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+    setPage(0);
+  }
 
-    // Quick filter
+  function SortIcon({ field }: { field: SortField }) {
+    if (sortField !== field) return <ArrowUpDown size={12} className="text-beacon-text-muted" />;
+    return sortDir === 'desc'
+      ? <ArrowDown size={12} className="text-beacon-primary" />
+      : <ArrowUp size={12} className="text-beacon-primary" />;
+  }
+
+  const filtered = useMemo(() => {
+    let data = [...DEMO_PROSPECTS];
+
     if (activeQuickFilter) {
       const qf = QUICK_FILTERS.find((f) => f.id === activeQuickFilter);
       if (qf) data = data.filter(qf.apply);
     }
 
-    // Name/address lookup
     if (nameSearch) {
       const q = nameSearch.toLowerCase();
       data = data.filter((p) =>
@@ -99,8 +119,22 @@ export default function ProspectsPage() {
       data = data.filter((p) => getSuggestedService(p) === serviceFilter);
     }
 
-    return data.sort((a, b) => b.compound_score - a.compound_score);
-  }, [activeQuickFilter, nameSearch, officeFilter, signalFilter, serviceFilter]);
+    const dir = sortDir === 'desc' ? -1 : 1;
+    switch (sortField) {
+      case 'years':
+        data.sort((a, b) => dir * (a.years_held - b.years_held));
+        break;
+      case 'equity':
+        data.sort((a, b) => dir * (a.estimated_equity - b.estimated_equity));
+        break;
+      case 'risk':
+      default:
+        data.sort((a, b) => dir * (a.compound_score - b.compound_score));
+        break;
+    }
+
+    return data;
+  }, [activeQuickFilter, nameSearch, officeFilter, signalFilter, serviceFilter, sortField, sortDir]);
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -117,12 +151,12 @@ export default function ProspectsPage() {
   }
 
   function exportCSV() {
-    const header = 'Address,City,State,Owner,Risk Score,Indicators,Suggested Service,Intervention Stage\n';
+    const header = 'Owner,Years Held,Address,City,State,Equity,Risk Score,Indicators,Suggested Service,Intervention Stage\n';
     const rows = filtered.map((p) => {
       const signals = getSignalsForProspect(p)
         .map((s) => SIGNAL_COLORS[s as keyof typeof SIGNAL_COLORS]?.label || s)
         .join('; ');
-      return `"${p.address}","${p.city}","${p.state}","${p.owner_name}",${p.compound_score},"${signals}","${getSuggestedService(p)}","${getInterventionStage(p)}"`;
+      return `"${p.owner_name}",${p.years_held},"${p.address}","${p.city}","${p.state}",${p.estimated_equity},${p.compound_score},"${signals}","${getSuggestedService(p)}","${getInterventionStage(p)}"`;
     });
     const csv = header + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -178,7 +212,6 @@ export default function ProspectsPage() {
       {/* Filter bar */}
       <div className="bg-white rounded-xl border border-beacon-border p-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Name/address/ZIP lookup */}
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted" />
             <input
@@ -249,20 +282,46 @@ export default function ProspectsPage() {
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <colgroup>
-              <col className="w-[22%]" />
+              <col className="w-[18%]" />
+              <col className="w-[7%]" />
               <col className="w-[18%]" />
               <col className="w-[10%]" />
-              <col className="w-[30%]" />
-              <col className="w-[16%]" />
+              <col className="w-[29%]" />
+              <col className="w-[14%]" />
               <col className="w-[4%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
-                <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Homeowner</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Property</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Equity</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Distress Indicators</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Action Needed</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
+                  Homeowner
+                </th>
+                <th
+                  className="text-center px-2 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider cursor-pointer select-none hover:text-beacon-text transition-colors"
+                  onClick={() => handleSort('years')}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Years
+                    <SortIcon field="years" />
+                  </span>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
+                  Property
+                </th>
+                <th
+                  className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider cursor-pointer select-none hover:text-beacon-text transition-colors"
+                  onClick={() => handleSort('equity')}
+                >
+                  <span className="inline-flex items-center justify-end gap-1 w-full">
+                    Equity
+                    <SortIcon field="equity" />
+                  </span>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
+                  Distress Indicators
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
+                  Action Needed
+                </th>
                 <th className="w-10"></th>
               </tr>
             </thead>
@@ -276,14 +335,16 @@ export default function ProspectsPage() {
                   <tr key={prospect.id} className="hover:bg-beacon-surface-alt/30 transition-colors group">
                     <td className="px-5 py-3.5">
                       <p className="text-sm font-medium text-beacon-text truncate">{prospect.owner_name}</p>
-                      <p className="text-xs text-beacon-text-muted">{prospect.years_held}yr homeowner</p>
+                    </td>
+                    <td className="px-2 py-3.5 text-center">
+                      <p className="text-sm text-beacon-text tabular-nums">{prospect.years_held}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="text-sm text-beacon-text truncate">{prospect.address}</p>
                       <p className="text-xs text-beacon-text-muted">{prospect.city}, {prospect.state} {prospect.zip}</p>
                     </td>
                     <td className="px-4 py-3.5 text-right">
-                      <p className="text-sm font-semibold text-beacon-text">{formatCurrency(prospect.estimated_equity)}</p>
+                      <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.estimated_equity)}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex flex-wrap gap-1">
