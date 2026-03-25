@@ -12,6 +12,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
+import { getBrowserClient } from '@/lib/supabase';
 
 interface StatCard {
   label: string;
@@ -99,15 +100,39 @@ function getActivityColor(type: string) {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [firstName, setFirstName] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+    async function loadUser() {
+      const supabase = getBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase
+          .from('beacon_users')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
+        const name = data?.full_name || session.user.email?.split('@')[0] || '';
+        setFirstName(name.split(' ')[0]);
+      }
+    }
+    loadUser();
+  }, []);
+
+  const greeting = firstName
+    ? `Good morning, ${firstName}.`
+    : 'Good morning.';
 
   return (
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-xl font-bold text-beacon-text tracking-tight">Dashboard</h1>
-        <p className="text-sm text-beacon-text-muted mt-1">
-          ACCC prospect intelligence overview
+        <h1 className="text-2xl font-bold text-gray-900">
+          {greeting}
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Here&apos;s what Beacon found in your markets today.
         </p>
       </div>
 

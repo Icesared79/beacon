@@ -1,121 +1,154 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { BeaconLogo } from '@/components/BeaconLogo';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { BeaconLogo } from '@/components/BeaconLogo'
+import { getBrowserClient } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
 
-    // TODO: Replace with Supabase auth
-    if (email && password) {
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 600);
-    } else {
-      setError('Please enter your email and password');
-      setLoading(false);
+    const supabase = getBrowserClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError('Invalid email or password. Contact your administrator for access.')
+      setLoading(false)
+      return
     }
+
+    router.push('/dashboard')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 px-4">
-      {/* Subtle grid pattern */}
-      <div
-        className="fixed inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(#1B5EA8 1px, transparent 1px), linear-gradient(90deg, #1B5EA8 1px, transparent 1px)`,
-          backgroundSize: '48px 48px',
-        }}
-      />
-
-      <div className="relative w-full max-w-sm">
-        {/* Logo and heading */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <BeaconLogo size={56} />
+    <div className="min-h-screen bg-[#F0F4F8] flex">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1B5EA8] flex-col justify-between p-12">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <BeaconLogo className="h-10 w-10 text-white" />
+          <div>
+            <p className="text-white font-semibold text-xl tracking-tight">Beacon</p>
+            <p className="text-blue-200 text-sm">by American Consumer Credit Counseling</p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-beacon-text">
-            Beacon
+        </div>
+
+        {/* Middle statement */}
+        <div>
+          <h1 className="text-white text-4xl font-bold leading-tight mb-6">
+            Find the people who need us before they know to ask.
           </h1>
-          <p className="mt-1.5 text-sm text-beacon-text-muted">
-            Financial distress intelligence
+          <p className="text-blue-200 text-lg leading-relaxed">
+            Beacon monitors financial distress signals across ACCC&apos;s operating markets
+            — giving counselors a proactive way to reach homeowners before they reach
+            crisis stage.
           </p>
         </div>
 
-        {/* Login card */}
-        <div className="bg-white rounded-xl shadow-sm border border-beacon-border p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Bottom stats */}
+        <div className="grid grid-cols-3 gap-6">
+          <div>
+            <p className="text-white text-2xl font-bold font-mono">31,007</p>
+            <p className="text-blue-200 text-sm mt-1">Active prospects</p>
+          </div>
+          <div>
+            <p className="text-white text-2xl font-bold font-mono">7,718</p>
+            <p className="text-blue-200 text-sm mt-1">Critical signals</p>
+          </div>
+          <div>
+            <p className="text-white text-2xl font-bold font-mono">40+</p>
+            <p className="text-blue-200 text-sm mt-1">Markets covered</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel — login form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-3 mb-10 lg:hidden">
+            <BeaconLogo className="h-8 w-8" color="#1B5EA8" />
             <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-beacon-text-secondary mb-1.5 uppercase tracking-wider"
-              >
-                Email
+              <p className="text-[#1B5EA8] font-semibold text-lg">Beacon</p>
+              <p className="text-gray-500 text-xs">by American Consumer Credit Counseling</p>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in to Beacon</h2>
+          <p className="text-gray-500 text-sm mb-8">
+            Access is restricted to ACCC staff. Contact your administrator if you need
+            access.
+          </p>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email address
               </label>
               <input
-                id="email"
                 type="email"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="counselor@consumercredit.com"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-beacon-border bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 focus:border-beacon-primary transition-all"
+                placeholder="you@consumercredit.com"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5EA8] focus:border-transparent"
                 autoComplete="email"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-medium text-beacon-text-secondary mb-1.5 uppercase tracking-wider"
-              >
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <a href="#" className="text-sm text-[#1B5EA8] hover:underline">
+                  Forgot password?
+                </a>
+              </div>
               <input
-                id="password"
                 type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-beacon-border bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 focus:border-beacon-primary transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5EA8] focus:border-transparent"
                 autoComplete="current-password"
               />
             </div>
 
             {error && (
-              <p className="text-xs text-beacon-critical font-medium">{error}</p>
+              <p className="text-sm text-red-600 font-medium">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-60"
-              style={{ backgroundColor: loading ? '#94A3B8' : '#1B5EA8' }}
+              className="w-full bg-[#1B5EA8] text-white py-3 rounded-lg text-sm font-semibold hover:bg-[#144A87] transition-colors disabled:opacity-60"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <p className="text-xs text-gray-400 text-center">
+              Beacon is a financial distress intelligence platform operated by Red Planet
+              Data exclusively for American Consumer Credit Counseling staff.
+            </p>
+          </div>
         </div>
-
-        {/* Tagline */}
-        <p className="text-center mt-6 text-xs text-beacon-text-muted">
-          For ACCC counselors only — invite required
-        </p>
-
-        {/* Powered by */}
-        <p className="text-center mt-8 text-[10px] text-beacon-text-muted/60 tracking-wide">
-          Powered by Red Planet Data
-        </p>
       </div>
     </div>
-  );
+  )
 }
