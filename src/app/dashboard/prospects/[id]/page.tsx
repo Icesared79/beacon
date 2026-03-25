@@ -1,11 +1,10 @@
 'use client';
 
-import { use, useState, useMemo } from 'react';
+import { use, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
   Calendar,
-
   Home,
   Clock,
   AlertTriangle,
@@ -17,14 +16,18 @@ import {
   Mail,
   MapPin,
   Loader2,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Database,
+  ShieldCheck,
+  RefreshCw,
+  CalendarClock,
 } from 'lucide-react';
 
 import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
-import {
-  DEMO_PROSPECTS,
-  getSignalsForProspect,
-  getDemoSignalEvents,
-} from '@/lib/prospect-data';
+import { getSignalsForProspect } from '@/lib/prospect-helpers';
+import type { Prospect } from '@/lib/prospect-helpers';
 import { cn, formatCurrency, getScoreColor, getScoreLabel } from '@/lib/utils';
 
 const EVENT_ICONS: Record<string, string> = {
@@ -37,6 +40,51 @@ const EVENT_ICONS: Record<string, string> = {
   probate: '📜',
 };
 
+// ─── Contact lookup persistence ───
+interface ContactRecord {
+  attemptedAt: string; // ISO timestamp
+  found: boolean;
+  phones: Array<{ number: string; type: string }>;
+  emails: string[];
+  mailingAddress: { street: string; city: string; state: string; zip: string } | null;
+}
+
+const CONTACT_STORAGE_KEY = 'beacon_contact_lookups';
+const REQUERY_COOLDOWN_DAYS = 30;
+
+function loadContactRecord(prospectId: string): ContactRecord | null {
+  try {
+    const raw = localStorage.getItem(CONTACT_STORAGE_KEY);
+    if (!raw) return null;
+    const all = JSON.parse(raw) as Record<string, ContactRecord>;
+    return all[prospectId] || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveContactRecord(prospectId: string, record: ContactRecord) {
+  try {
+    const raw = localStorage.getItem(CONTACT_STORAGE_KEY);
+    const all: Record<string, ContactRecord> = raw ? JSON.parse(raw) : {};
+    all[prospectId] = record;
+    localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // localStorage full or unavailable — silent fail
+  }
+}
+
+function daysSince(isoDate: string): number {
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatLookupDate(isoDate: string): string {
+  const d = new Date(isoDate);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    + ' at '
+    + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
 const SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
   critical: { bg: 'bg-red-100', text: 'text-red-700' },
   high: { bg: 'bg-amber-100', text: 'text-amber-700' },
@@ -44,14 +92,25 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
   info: { bg: 'bg-blue-100', text: 'text-blue-600' },
 };
 
+interface SignalEvent {
+  id: string;
+  prospect_id: string;
+  signal_type: string;
+  severity: string;
+  detected_date: string;
+  description: string;
+  amount?: number;
+}
+
 export default function ProspectDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const prospect = DEMO_PROSPECTS.find((p) => p.id === id);
-  const [status, setStatus] = useState(prospect?.status || 'new');
+  const [prospect, setProspect] = useState<Prospect | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [status, setStatus] = useState('new');
   const [noteText, setNoteText] = useState('');
   const [notes, setNotes] = useState<Array<{ text: string; time: string }>>([]);
   const [contactInfo, setContactInfo] = useState<{
@@ -61,9 +120,66 @@ export default function ProspectDetailPage({
   } | null>(null);
   const [contactLoading, setContactLoading] = useState(false);
   const [contactFetched, setContactFetched] = useState(false);
+  const [contactError, setContactError] = useState('');
+  const [contactStep, setContactStep] = useState(0);
+  const [contactProgress, setContactProgress] = useState(0);
+  const [savedRecord, setSavedRecord] = useState<ContactRecord | null>(null);
+
+  useEffect(() => {
+    async function loadProspect() {
+      try {
+        const res = await fetch(`/api/beacon/prospects/${id}`);
+        const data = await res.json();
+        if (data.prospect) {
+          setProspect(data.prospect);
+          setStatus(data.prospect.status || 'new');
+        }
+      } catch (err) {
+        console.error('Failed to load prospect:', err);
+      } finally {
+        setPageLoading(false);
+      }
+    }
+    loadProspect();
+  }, [id]);
 
   const signals = prospect ? getSignalsForProspect(prospect) : [];
-  const events = useMemo(() => getDemoSignalEvents(id), [id]);
+  const events: SignalEvent[] = [];
+
+  // Load any previously saved lookup on mount
+  useEffect(() => {
+    const record = loadContactRecord(id);
+    if (record) {
+      setSavedRecord(record);
+      setContactInfo({
+        phones: record.phones,
+        emails: record.emails,
+        mailingAddress: record.mailingAddress,
+      });
+      setContactFetched(true);
+    }
+  }, [id]);
+
+  // Compute re-lookup eligibility
+  const canRequery = useMemo(() => {
+    if (!savedRecord) return true; // never looked up
+    if (savedRecord.found) return false; // has results — no need
+    return daysSince(savedRecord.attemptedAt) >= REQUERY_COOLDOWN_DAYS;
+  }, [savedRecord]);
+
+  const daysUntilRequery = useMemo(() => {
+    if (!savedRecord || savedRecord.found) return 0;
+    return Math.max(0, REQUERY_COOLDOWN_DAYS - daysSince(savedRecord.attemptedAt));
+  }, [savedRecord]);
+
+  if (pageLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-beacon-primary" size={24} />
+        <span className="ml-2 text-sm text-beacon-text-muted">Loading household...</span>
+      </div>
+    );
+  }
 
   if (!prospect) {
     return (
@@ -79,7 +195,6 @@ export default function ProspectDetailPage({
   const scoreColor = getScoreColor(prospect.compound_score);
   const scoreLabel = getScoreLabel(prospect.compound_score);
 
-
   function handleAddNote() {
     if (!noteText.trim()) return;
     setNotes((prev) => [
@@ -93,18 +208,37 @@ export default function ProspectDetailPage({
     setStatus(newStatus);
   }
 
-  const [contactError, setContactError] = useState('');
-  const [contactStatus, setContactStatus] = useState('');
+  function finalizeLookup(phones: Array<{ number: string; type: string }>, emails: string[], mailingAddress: ContactRecord['mailingAddress']) {
+    const found = phones.length > 0 || emails.length > 0 || !!mailingAddress;
+    const record: ContactRecord = {
+      attemptedAt: new Date().toISOString(),
+      found,
+      phones,
+      emails,
+      mailingAddress,
+    };
+    saveContactRecord(id, record);
+    setSavedRecord(record);
+    setContactInfo({ phones, emails, mailingAddress });
+    setContactFetched(true);
+    setContactLoading(false);
+    setContactProgress(100);
+    setContactStep(4);
+  }
 
   async function fetchContact() {
     if (!prospect) return;
     setContactLoading(true);
     setContactError('');
-    setContactStatus('Submitting lookup...');
+    setContactStep(1);
+    setContactProgress(10);
 
     try {
-      // Step 1: Submit the job
-      const submitRes = await fetch('/api/beacon/skip-trace', {
+      setContactStep(2);
+      setContactProgress(30);
+
+      // Single synchronous call — instant trace endpoint, no polling needed
+      const res = await fetch('/api/beacon/skip-trace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,50 +249,36 @@ export default function ProspectDetailPage({
           zip: prospect.zip,
         }),
       });
-      const submitData = await submitRes.json();
-      if (!submitRes.ok || !submitData.queueId) {
-        setContactError(submitData.error || `Lookup failed (${submitRes.status})`);
-        setContactFetched(true);
+
+      setContactStep(3);
+      setContactProgress(70);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setContactError(data.error || `Lookup failed (${res.status})`);
         setContactLoading(false);
+        setContactStep(0);
         return;
       }
 
-      const queueId = submitData.queueId;
-      setContactStatus('Searching records...');
+      setContactStep(4);
+      setContactProgress(100);
 
-      // Step 2: Poll for results (client-side, 4s intervals, max 15 attempts)
-      for (let attempt = 0; attempt < 15; attempt++) {
-        await new Promise((r) => setTimeout(r, 4000));
-        setContactStatus(`Searching records... (${attempt + 1})`);
+      // Map phones — instant API returns {number, type, dnc, carrier}
+      const phones = (data.phones || []).map((p: { number: string; type: string; dnc?: boolean }) => ({
+        number: p.number,
+        type: p.type || 'Unknown',
+      }));
+      const emails = data.emails || [];
+      const mailingAddress = data.mailingAddress || null;
 
-        try {
-          const pollRes = await fetch(`/api/beacon/skip-trace?queueId=${queueId}&attempt=${attempt}`);
-          const pollData = await pollRes.json();
-
-          if (pollData.status === 'complete') {
-            setContactInfo({
-              phones: pollData.phones || [],
-              emails: pollData.emails || [],
-              mailingAddress: pollData.mailingAddress || null,
-            });
-            setContactFetched(true);
-            setContactLoading(false);
-            return;
-          }
-          // status === 'pending' → keep polling
-        } catch {
-          // network blip, keep trying
-        }
-      }
-
-      // Timed out after all attempts
-      setContactError('Lookup timed out — Tracerfy did not return results. Try again later.');
-      setContactFetched(true);
+      finalizeLookup(phones, emails, mailingAddress);
     } catch (err) {
       setContactError('Network error — could not reach skip trace service');
-      setContactFetched(true);
+      setContactLoading(false);
+      setContactStep(0);
     }
-    setContactLoading(false);
   }
 
   // Build "what does this family need" explanation
@@ -379,101 +499,244 @@ export default function ProspectDetailPage({
             <Phone size={15} className="text-beacon-primary" />
             Reach Out to Offer Help
           </h2>
-          {!contactFetched && (
-            <button
-              onClick={fetchContact}
-              disabled={contactLoading}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white rounded-lg disabled:opacity-60 transition-colors"
-              style={{ backgroundColor: '#1B5EA8' }}
-            >
-              {contactLoading ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" />
-                  Looking up...
-                </>
-              ) : (
-                <>
-                  <Phone size={13} />
-                  Look Up Contact
-                </>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* First lookup button — never looked up before */}
+            {!contactFetched && !contactLoading && (
+              <button
+                onClick={fetchContact}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ backgroundColor: '#1B5EA8' }}
+              >
+                <Search size={13} />
+                Look Up Contact
+              </button>
+            )}
+            {/* Re-lookup button — previous lookup had no results and cooldown has passed */}
+            {contactFetched && !contactLoading && savedRecord && !savedRecord.found && canRequery && (
+              <button
+                onClick={fetchContact}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ backgroundColor: '#1B5EA8' }}
+              >
+                <RefreshCw size={12} />
+                Search Again
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* ── Idle state (never looked up) ── */}
         {!contactFetched && !contactLoading && (
           <p className="text-xs text-beacon-text-muted">
-            Click &ldquo;Look Up Contact&rdquo; to find contact information so you can reach out and offer help.
+            Click &ldquo;Look Up Contact&rdquo; to search public records for contact information.
           </p>
         )}
 
+        {/* ── Loading state — step-by-step progress ── */}
         {contactLoading && (
-          <div className="flex items-center gap-2 text-xs text-beacon-text-muted">
-            <Loader2 size={14} className="animate-spin" />
-            {contactStatus || `Searching records for ${prospect.owner_name}...`}
-          </div>
-        )}
+          <div className="space-y-4">
+            {/* Progress bar */}
+            <div className="w-full h-1.5 bg-beacon-surface-alt rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{
+                  width: `${contactProgress}%`,
+                  backgroundColor: '#1B5EA8',
+                }}
+              />
+            </div>
 
-        {contactFetched && contactInfo && (
-          <div className="space-y-2.5">
-            {contactInfo.phones && contactInfo.phones.length > 0 ? (
-              contactInfo.phones.map((phone, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Phone size={14} className="text-beacon-text-muted flex-shrink-0" />
-                  <a
-                    href={`tel:${phone.number}`}
-                    className="text-sm text-beacon-primary hover:underline"
-                  >
-                    {phone.number}
-                  </a>
-                  <span className="text-[10px] text-beacon-text-muted uppercase tracking-wider">
-                    {phone.type}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-beacon-text-muted flex items-center gap-2">
-                <Phone size={13} className="text-beacon-text-muted" />
-                No phone numbers found
-              </p>
-            )}
-            {contactInfo.emails && contactInfo.emails.length > 0 ? (
-              contactInfo.emails.map((email, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Mail size={14} className="text-beacon-text-muted flex-shrink-0" />
-                  <a
-                    href={`mailto:${email}`}
-                    className="text-sm text-beacon-primary hover:underline"
-                  >
-                    {email}
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-beacon-text-muted flex items-center gap-2">
-                <Mail size={13} className="text-beacon-text-muted" />
-                No email addresses found
-              </p>
-            )}
-            {contactInfo.mailingAddress && (
+            {/* Step indicators */}
+            <div className="space-y-2.5">
               <div className="flex items-center gap-3">
-                <MapPin size={14} className="text-beacon-text-muted flex-shrink-0" />
-                <span className="text-sm text-beacon-text-secondary">
-                  {contactInfo.mailingAddress.street}, {contactInfo.mailingAddress.city}{' '}
-                  {contactInfo.mailingAddress.state} {contactInfo.mailingAddress.zip}
+                {contactStep > 1 ? (
+                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
+                ) : contactStep === 1 ? (
+                  <Loader2 size={15} className="text-blue-500 animate-spin flex-shrink-0" />
+                ) : (
+                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
+                )}
+                <span className={cn('text-xs', contactStep >= 1 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
+                  Connecting to skip trace service
                 </span>
               </div>
-            )}
+
+              <div className="flex items-center gap-3">
+                {contactStep > 2 ? (
+                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
+                ) : contactStep === 2 ? (
+                  <Loader2 size={15} className="text-blue-500 animate-spin flex-shrink-0" />
+                ) : (
+                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
+                )}
+                <span className={cn('text-xs', contactStep >= 2 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
+                  Searching for {prospect.owner_name} at {prospect.address}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {contactStep > 3 ? (
+                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
+                ) : contactStep === 3 ? (
+                  <Loader2 size={15} className="text-blue-500 animate-spin flex-shrink-0" />
+                ) : (
+                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
+                )}
+                <span className={cn('text-xs', contactStep >= 3 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
+                  Cross-referencing public records
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {contactStep >= 4 ? (
+                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
+                ) : (
+                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
+                )}
+                <span className={cn('text-xs', contactStep >= 4 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
+                  Processing results
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-beacon-text-muted leading-relaxed mt-2">
+              Searching phone, email, and mailing records. This usually takes a few seconds.
+            </p>
           </div>
         )}
 
-        {contactFetched && contactError && (
-          <p className="text-xs text-red-600">{contactError}</p>
+        {/* ── Error state ── */}
+        {!contactLoading && contactError && (
+          <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
+            <XCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-medium text-red-700">{contactError}</p>
+              <p className="text-[10px] text-red-500 mt-1">This may be a temporary issue. Try again in a few minutes.</p>
+            </div>
+          </div>
         )}
 
-        {contactFetched && !contactInfo && !contactError && (
-          <p className="text-xs text-beacon-text-muted">No contact information found for this household.</p>
-        )}
+        {/* ── Results state ── */}
+        {contactFetched && !contactLoading && contactInfo && (() => {
+          const hasPhones = contactInfo.phones && contactInfo.phones.length > 0;
+          const hasEmails = contactInfo.emails && contactInfo.emails.length > 0;
+          const hasMailingAddr = !!contactInfo.mailingAddress;
+          const hasAnyContact = hasPhones || hasEmails || hasMailingAddr;
+
+          return (
+            <div className="space-y-4">
+              {/* ── Found contact info ── */}
+              {hasAnyContact && (
+                <>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border bg-emerald-50 border-emerald-100">
+                    <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium text-emerald-700">
+                        Contact information found
+                      </p>
+                      <p className="text-[10px] mt-0.5 text-emerald-600">
+                        Found {contactInfo.phones.length} phone{contactInfo.phones.length !== 1 ? 's' : ''}, {contactInfo.emails.length} email{contactInfo.emails.length !== 1 ? 's' : ''}{hasMailingAddr ? ', 1 mailing address' : ''}
+                      </p>
+                      {savedRecord && (
+                        <p className="text-[10px] mt-1 text-emerald-500 flex items-center gap-1">
+                          <CalendarClock size={10} />
+                          Looked up {formatLookupDate(savedRecord.attemptedAt)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {hasPhones && contactInfo.phones.map((phone, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Phone size={14} className="text-beacon-text-muted flex-shrink-0" />
+                        <a
+                          href={`tel:${phone.number}`}
+                          className="text-sm text-beacon-primary hover:underline"
+                        >
+                          {phone.number}
+                        </a>
+                        <span className="text-[10px] text-beacon-text-muted uppercase tracking-wider">
+                          {phone.type}
+                        </span>
+                      </div>
+                    ))}
+                    {hasEmails && contactInfo.emails.map((email, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Mail size={14} className="text-beacon-text-muted flex-shrink-0" />
+                        <a
+                          href={`mailto:${email}`}
+                          className="text-sm text-beacon-primary hover:underline"
+                        >
+                          {email}
+                        </a>
+                      </div>
+                    ))}
+                    {hasMailingAddr && contactInfo.mailingAddress && (
+                      <div className="flex items-center gap-3">
+                        <MapPin size={14} className="text-beacon-text-muted flex-shrink-0" />
+                        <span className="text-sm text-beacon-text-secondary">
+                          {contactInfo.mailingAddress.street}, {contactInfo.mailingAddress.city}{' '}
+                          {contactInfo.mailingAddress.state} {contactInfo.mailingAddress.zip}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ── No results found ── */}
+              {!hasAnyContact && (
+                <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 border-slate-200">
+                  <ShieldCheck size={15} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-slate-600">
+                      Search completed — no contact records available
+                    </p>
+                    {savedRecord && (
+                      <p className="text-[10px] mt-1 text-slate-500 flex items-center gap-1">
+                        <CalendarClock size={10} />
+                        Searched {formatLookupDate(savedRecord.attemptedAt)}
+                      </p>
+                    )}
+                    <p className="text-[10px] mt-1.5 text-slate-400 leading-relaxed">
+                      No phone, email, or mailing records were found for &ldquo;{prospect.owner_name}&rdquo; at {prospect.address}, {prospect.city} {prospect.state}.
+                      This is common for individuals with unlisted numbers, newer addresses, or properties held under entity names.
+                    </p>
+
+                    {/* Cooldown info */}
+                    {savedRecord && !canRequery && daysUntilRequery > 0 && (
+                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
+                        <RefreshCw size={10} className="text-slate-400" />
+                        <p className="text-[10px] text-slate-400">
+                          Eligible for re-lookup in {daysUntilRequery} day{daysUntilRequery !== 1 ? 's' : ''}.
+                          Records are updated monthly — re-searching too soon uses a credit with no new data.
+                        </p>
+                      </div>
+                    )}
+                    {savedRecord && canRequery && (
+                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
+                        <RefreshCw size={10} className="text-blue-500" />
+                        <p className="text-[10px] text-blue-600">
+                          Eligible for re-lookup — click &ldquo;Search Again&rdquo; above to check for new records.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* What was searched — always shown for transparency */}
+              <div className="flex items-start gap-2 pt-2 border-t border-beacon-border">
+                <Database size={12} className="text-beacon-text-muted flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-beacon-text-muted leading-relaxed">
+                  Searched public phone, email, and mailing records for <span className="font-medium">{prospect.owner_name}</span> associated
+                  with <span className="font-medium">{prospect.address}, {prospect.city} {prospect.state} {prospect.zip}</span>.
+                </p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Suggested outreach script */}
         <div className="mt-4 p-3 bg-beacon-surface-alt rounded-lg border border-beacon-border">

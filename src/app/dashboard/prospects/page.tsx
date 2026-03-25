@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { Download, ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown, ArrowUp, X, Search } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown, ArrowUp, X, Search, Loader2 } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
-import { DEMO_PROSPECTS, getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-data';
-import type { InterventionStage } from '@/lib/prospect-data';
+import { getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-helpers';
+import type { Prospect, InterventionStage } from '@/lib/prospect-helpers';
 import { cn, formatCurrency, formatNumber, getScoreLabel } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
@@ -20,7 +20,7 @@ interface QuickFilter {
   id: string;
   label: string;
   description: string;
-  apply: (p: typeof DEMO_PROSPECTS[number]) => boolean;
+  apply: (p: Prospect) => boolean;
 }
 
 const QUICK_FILTERS: QuickFilter[] = [
@@ -60,6 +60,8 @@ type SortField = 'risk' | 'years' | 'equity';
 type SortDir = 'desc' | 'asc';
 
 export default function ProspectsPage() {
+  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [officeFilter, setOfficeFilter] = useState('');
   const [signalFilter, setSignalFilter] = useState('');
@@ -69,10 +71,22 @@ export default function ProspectsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
 
-  const offices = useMemo(
-    () => [...new Set(DEMO_PROSPECTS.map((p) => p.office_city).filter(Boolean))].sort(),
-    []
-  );
+  useEffect(() => {
+    async function fetchProspects() {
+      try {
+        const res = await fetch('/api/beacon/prospects?pageSize=1000');
+        const data = await res.json();
+        if (data.prospects) {
+          setProspects(data.prospects);
+        }
+      } catch (err) {
+        console.error('Failed to fetch prospects:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProspects();
+  }, []);
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -92,7 +106,7 @@ export default function ProspectsPage() {
   }
 
   const filtered = useMemo(() => {
-    let data = [...DEMO_PROSPECTS];
+    let data = [...prospects];
 
     if (activeQuickFilter) {
       const qf = QUICK_FILTERS.find((f) => f.id === activeQuickFilter);
@@ -122,10 +136,10 @@ export default function ProspectsPage() {
     const dir = sortDir === 'desc' ? -1 : 1;
     switch (sortField) {
       case 'years':
-        data.sort((a, b) => dir * (a.years_held - b.years_held));
+        data.sort((a, b) => dir * ((a.years_held || 0) - (b.years_held || 0)));
         break;
       case 'equity':
-        data.sort((a, b) => dir * (a.estimated_equity - b.estimated_equity));
+        data.sort((a, b) => dir * ((a.estimated_equity || 0) - (b.estimated_equity || 0)));
         break;
       case 'risk':
       default:
@@ -134,7 +148,7 @@ export default function ProspectsPage() {
     }
 
     return data;
-  }, [activeQuickFilter, nameSearch, officeFilter, signalFilter, serviceFilter, sortField, sortDir]);
+  }, [prospects, activeQuickFilter, nameSearch, officeFilter, signalFilter, serviceFilter, sortField, sortDir]);
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -166,6 +180,15 @@ export default function ProspectsPage() {
     a.download = `beacon-households-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-beacon-primary" size={24} />
+        <span className="ml-2 text-sm text-beacon-text-muted">Loading households...</span>
+      </div>
+    );
   }
 
   return (
@@ -230,17 +253,6 @@ export default function ProspectsPage() {
               </button>
             )}
           </div>
-
-          <select
-            value={officeFilter}
-            onChange={(e) => { setOfficeFilter(e.target.value); setPage(0); }}
-            className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
-          >
-            <option value="">All Offices</option>
-            {offices.map((o) => (
-              <option key={o} value={o}>{o}</option>
-            ))}
-          </select>
 
           <select
             value={signalFilter}
@@ -337,7 +349,7 @@ export default function ProspectsPage() {
                       <p className="text-sm font-medium text-beacon-text truncate">{prospect.owner_name}</p>
                     </td>
                     <td className="px-2 py-3.5 text-center">
-                      <p className="text-sm text-beacon-text tabular-nums">{prospect.years_held}</p>
+                      <p className="text-sm text-beacon-text tabular-nums">{prospect.years_held ?? '—'}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="text-sm text-beacon-text truncate">{prospect.address}</p>
