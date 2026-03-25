@@ -252,6 +252,7 @@ export default function ProspectsPage() {
               <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
                 <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Address</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Homeowner</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Equity at Stake</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Distress Indicators</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Risk Level</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Suggested Service</th>
@@ -272,9 +273,10 @@ export default function ProspectsPage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="text-sm text-beacon-text">{prospect.owner_name}</p>
-                      <p className="text-xs text-beacon-text-muted">
-                        {prospect.years_held}yr homeowner &middot; {formatCurrency(prospect.estimated_equity)} at stake
-                      </p>
+                      <p className="text-xs text-beacon-text-muted">{prospect.years_held}yr homeowner</p>
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <p className="text-sm font-medium text-beacon-text">{formatCurrency(prospect.estimated_equity)}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex flex-wrap gap-1.5">
