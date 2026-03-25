@@ -76,10 +76,9 @@ export function Sidebar() {
     router.push('/login')
   }
 
-  const initials = user?.full_name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('') || 'U'
+  const displayName = user?.full_name || user?.email?.split('@')[0] || 'ACCC Counselor'
+  const displayRole = user?.role || 'counselor'
+  const initials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 
   const navContent = (
     <div className="flex flex-col h-full">
@@ -126,10 +125,10 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.full_name || 'Loading...'}
+              {displayName}
             </p>
             <p className="text-xs text-gray-400 capitalize">
-              {user?.role?.replace('_', ' ') || ''}
+              {displayRole.replace('_', ' ')}
             </p>
           </div>
           <button
