@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
   const minScore = Number(searchParams.get('minScore') || 0);
   const status = searchParams.get('status');
   const state = searchParams.get('state');
+  const minEquity = searchParams.get('minEquity');
+  const maxEquity = searchParams.get('maxEquity');
   const page = Number(searchParams.get('page') || 0);
   const pageSize = Number(searchParams.get('pageSize') || 25);
 
@@ -41,6 +43,8 @@ export async function GET(request: NextRequest) {
     const col = signalMap[signal];
     if (col) query = query.eq(col, true);
   }
+  if (minEquity) query = query.gte('estimated_equity', Number(minEquity));
+  if (maxEquity) query = query.lte('estimated_equity', Number(maxEquity));
 
   query = query
     .order('compound_score', { ascending: false })

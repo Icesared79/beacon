@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Download, ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown, ArrowUp, X, Search, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown, ArrowUp, X, Search, Loader2, ChevronDown } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
 import { getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-helpers';
 import type { Prospect, InterventionStage } from '@/lib/prospect-helpers';
@@ -16,77 +16,94 @@ const STAGE_STYLES: Record<InterventionStage, { color: string; label: string }> 
   Early: { color: '#2563EB', label: 'Time to help' },
 };
 
-interface QuickFilter {
-  id: string;
+const EQUITY_PRESETS = [
+  { label: 'Any', min: '', max: '' },
+  { label: 'Under $100K', min: '', max: '100000' },
+  { label: '$100K–$500K', min: '100000', max: '500000' },
+  { label: '$500K–$1M', min: '500000', max: '1000000' },
+  { label: 'Over $1M', min: '1000000', max: '' },
+];
+
+interface FilterOption {
+  value: string;
   label: string;
-  description: string;
-  apply: (p: Prospect) => boolean;
 }
 
-const QUICK_FILTERS: QuickFilter[] = [
-  {
-    id: 'urgent',
-    label: 'Urgent',
-    description: 'Families who need immediate help',
-    apply: (p) => p.compound_score >= 80,
-  },
-  {
-    id: 'foreclosure',
-    label: 'Facing Foreclosure',
-    description: 'Active foreclosure proceedings',
-    apply: (p) => p.has_lis_pendens,
-  },
-  {
-    id: 'high_equity',
-    label: 'Most Equity at Risk',
-    description: 'Over $200K at stake',
-    apply: (p) => p.estimated_equity >= 200000,
-  },
-  {
-    id: 'bankruptcy',
-    label: 'Bankruptcy Filed',
-    description: 'May need bankruptcy counseling',
-    apply: (p) => p.has_bankruptcy,
-  },
-  {
-    id: 'early',
-    label: 'Early Stage',
-    description: 'Best chance for DMP success',
-    apply: (p) => p.compound_score < 65,
-  },
-];
+interface IndicatorOption {
+  key: string;
+  label: string;
+}
 
 type SortField = 'risk' | 'years' | 'equity';
 type SortDir = 'desc' | 'asc';
 
 export default function ProspectsPage() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
-  const [officeFilter, setOfficeFilter] = useState('');
+
+  // Filter options from API
+  const [stateOptions, setStateOptions] = useState<FilterOption[]>([]);
+  const [indicatorOptions, setIndicatorOptions] = useState<IndicatorOption[]>([]);
+
+  // Active filters
+  const [stateFilter, setStateFilter] = useState('');
   const [signalFilter, setSignalFilter] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('');
+  const [equityPreset, setEquityPreset] = useState(0); // index into EQUITY_PRESETS
   const [nameSearch, setNameSearch] = useState('');
+
   const [sortField, setSortField] = useState<SortField>('risk');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
 
+  // Load filter options once
   useEffect(() => {
-    async function fetchProspects() {
+    async function loadFilters() {
       try {
-        const res = await fetch('/api/beacon/prospects?pageSize=1000');
+        const res = await fetch('/api/beacon/prospects/filters');
         const data = await res.json();
-        if (data.prospects) {
-          setProspects(data.prospects);
-        }
+        if (data.states) setStateOptions(data.states);
+        if (data.indicators) setIndicatorOptions(data.indicators);
       } catch (err) {
-        console.error('Failed to fetch prospects:', err);
-      } finally {
-        setLoading(false);
+        console.error('Failed to load filter options:', err);
       }
     }
-    fetchProspects();
+    loadFilters();
   }, []);
+
+  // Fetch prospects with server-side filters
+  const fetchProspects = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ pageSize: '1000' });
+      if (stateFilter) params.set('state', stateFilter);
+      if (signalFilter) params.set('signal', signalFilter);
+      if (nameSearch) params.set('search', nameSearch);
+      const preset = EQUITY_PRESETS[equityPreset];
+      if (preset.min) params.set('minEquity', preset.min);
+      if (preset.max) params.set('maxEquity', preset.max);
+
+      const res = await fetch(`/api/beacon/prospects?${params}`);
+      const data = await res.json();
+      if (data.prospects) {
+        setProspects(data.prospects);
+        setTotalCount(data.total ?? data.prospects.length);
+      }
+    } catch (err) {
+      console.error('Failed to fetch prospects:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [stateFilter, signalFilter, nameSearch, equityPreset]);
+
+  useEffect(() => {
+    fetchProspects();
+  }, [fetchProspects]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [stateFilter, signalFilter, nameSearch, equityPreset]);
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -105,34 +122,8 @@ export default function ProspectsPage() {
       : <ArrowUp size={12} className="text-beacon-primary" />;
   }
 
-  const filtered = useMemo(() => {
-    let data = [...prospects];
-
-    if (activeQuickFilter) {
-      const qf = QUICK_FILTERS.find((f) => f.id === activeQuickFilter);
-      if (qf) data = data.filter(qf.apply);
-    }
-
-    if (nameSearch) {
-      const q = nameSearch.toLowerCase();
-      data = data.filter((p) =>
-        p.owner_name.toLowerCase().includes(q) ||
-        p.address.toLowerCase().includes(q) ||
-        p.zip.includes(q)
-      );
-    }
-
-    if (officeFilter) data = data.filter((p) => p.office_city === officeFilter);
-    if (signalFilter) {
-      data = data.filter((p) => {
-        const signals = getSignalsForProspect(p);
-        return signals.includes(signalFilter);
-      });
-    }
-    if (serviceFilter) {
-      data = data.filter((p) => getSuggestedService(p) === serviceFilter);
-    }
-
+  const sorted = useMemo(() => {
+    const data = [...prospects];
     const dir = sortDir === 'desc' ? -1 : 1;
     switch (sortField) {
       case 'years':
@@ -146,43 +137,31 @@ export default function ProspectsPage() {
         data.sort((a, b) => dir * (a.compound_score - b.compound_score));
         break;
     }
-
     return data;
-  }, [prospects, activeQuickFilter, nameSearch, officeFilter, signalFilter, serviceFilter, sortField, sortDir]);
+  }, [prospects, sortField, sortDir]);
 
-  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
-  const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const pageCount = Math.ceil(sorted.length / PAGE_SIZE);
+  const pageData = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const hasFilters = activeQuickFilter || officeFilter || signalFilter || serviceFilter || nameSearch;
+  const hasFilters = stateFilter || signalFilter || nameSearch || equityPreset !== 0;
 
   function clearFilters() {
-    setActiveQuickFilter(null);
-    setOfficeFilter('');
+    setStateFilter('');
     setSignalFilter('');
-    setServiceFilter('');
+    setEquityPreset(0);
     setNameSearch('');
     setPage(0);
   }
 
-  function exportCSV() {
-    const header = 'Owner,Years Held,Address,City,State,Equity,Risk Score,Indicators,Suggested Service,Intervention Stage\n';
-    const rows = filtered.map((p) => {
-      const signals = getSignalsForProspect(p)
-        .map((s) => SIGNAL_COLORS[s as keyof typeof SIGNAL_COLORS]?.label || s)
-        .join('; ');
-      return `"${formatOwnerName(p.owner_name)}",${p.years_held || 'Unknown'},"${p.address}","${p.city}","${p.state}",${p.estimated_equity},${p.compound_score},"${signals}","${getSuggestedService(p)}","${getInterventionStage(p)}"`;
-    });
-    const csv = header + rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `beacon-households-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Build subtitle
+  const subtitleParts: string[] = [];
+  subtitleParts.push(`${formatNumber(totalCount)} household${totalCount !== 1 ? 's' : ''} identified`);
+  if (stateFilter) {
+    const stateLabel = stateOptions.find((s) => s.value === stateFilter)?.label || stateFilter;
+    subtitleParts[0] += ` in ${stateLabel}`;
   }
 
-  if (loading) {
+  if (loading && prospects.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="animate-spin text-beacon-primary" size={24} />
@@ -194,59 +173,30 @@ export default function ProspectsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-beacon-text tracking-tight">Households</h1>
-          <p className="text-sm text-beacon-text-muted mt-1">
-            {formatNumber(filtered.length)} families who may need help
-          </p>
-        </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-beacon-text-secondary bg-beacon-surface border border-beacon-border rounded-lg hover:bg-beacon-surface-alt transition-colors"
-        >
-          <Download size={15} />
-          Export
-        </button>
-      </div>
-
-      {/* Quick filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {QUICK_FILTERS.map((qf) => (
-          <button
-            key={qf.id}
-            onClick={() => {
-              setActiveQuickFilter(activeQuickFilter === qf.id ? null : qf.id);
-              setPage(0);
-            }}
-            className={cn(
-              'px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all',
-              activeQuickFilter === qf.id
-                ? 'bg-beacon-primary text-white border-beacon-primary shadow-sm'
-                : 'bg-beacon-surface text-beacon-text-secondary border-beacon-border hover:bg-beacon-surface-alt hover:border-beacon-border-dark'
-            )}
-            title={qf.description}
-          >
-            {qf.label}
-          </button>
-        ))}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-beacon-text tracking-tight">Households</h1>
+        <p className="text-sm text-beacon-text-muted mt-1">
+          {subtitleParts[0]}
+          {loading && <Loader2 className="inline-block ml-2 animate-spin" size={12} />}
+        </p>
       </div>
 
       {/* Filter bar */}
       <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted" />
             <input
               type="text"
               placeholder="Name, address, or ZIP"
               value={nameSearch}
-              onChange={(e) => { setNameSearch(e.target.value); setPage(0); }}
+              onChange={(e) => setNameSearch(e.target.value)}
               className="pl-8 pr-8 py-2 w-52 border border-beacon-border rounded-lg bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
             />
             {nameSearch && (
               <button
-                onClick={() => { setNameSearch(''); setPage(0); }}
+                onClick={() => setNameSearch('')}
                 className="absolute right-2.5 top-2.5 text-beacon-text-muted hover:text-beacon-text"
               >
                 <X className="h-3.5 w-3.5" />
@@ -254,28 +204,49 @@ export default function ProspectsPage() {
             )}
           </div>
 
-          <select
-            value={signalFilter}
-            onChange={(e) => { setSignalFilter(e.target.value); setPage(0); }}
-            className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
-          >
-            <option value="">All Indicators</option>
-            {Object.entries(SIGNAL_COLORS).map(([key, val]) => (
-              <option key={key} value={key}>{val.label}</option>
-            ))}
-          </select>
+          {/* State filter */}
+          <div className="relative">
+            <select
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+              className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
+            >
+              <option value="">All States</option>
+              {stateOptions.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
+          </div>
 
-          <select
-            value={serviceFilter}
-            onChange={(e) => { setServiceFilter(e.target.value); setPage(0); }}
-            className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
-          >
-            <option value="">All Services</option>
-            <option value="Debt Management">Debt Management</option>
-            <option value="Foreclosure Prevention">Foreclosure Prevention</option>
-            <option value="Bankruptcy Counseling">Bankruptcy Counseling</option>
-            <option value="Housing Counseling">Housing Counseling</option>
-          </select>
+          {/* Indicator filter */}
+          <div className="relative">
+            <select
+              value={signalFilter}
+              onChange={(e) => setSignalFilter(e.target.value)}
+              className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
+            >
+              <option value="">All Indicators</option>
+              {indicatorOptions.map((ind) => (
+                <option key={ind.key} value={ind.key}>{ind.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
+          </div>
+
+          {/* Equity range */}
+          <div className="relative">
+            <select
+              value={equityPreset}
+              onChange={(e) => setEquityPreset(Number(e.target.value))}
+              className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
+            >
+              {EQUITY_PRESETS.map((preset, i) => (
+                <option key={i} value={i}>Equity: {preset.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
+          </div>
 
           {hasFilters && (
             <button
@@ -338,6 +309,13 @@ export default function ProspectsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-beacon-border">
+              {pageData.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-beacon-text-muted">
+                    No households match the current filters.
+                  </td>
+                </tr>
+              )}
               {pageData.map((prospect) => {
                 const signals = getSignalsForProspect(prospect);
                 const service = getSuggestedService(prospect);
@@ -402,7 +380,7 @@ export default function ProspectsPage() {
         {pageCount > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-beacon-border">
             <span className="text-xs text-beacon-text-muted">
-              Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+              Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {formatNumber(totalCount)}
             </span>
             <div className="flex items-center gap-2">
               <button
