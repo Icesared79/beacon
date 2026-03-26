@@ -32,6 +32,7 @@ export interface Prospect {
   owner_state?: string;
   owner_zip?: string;
   is_absentee_owner?: boolean;
+  distress_months?: number;
   latitude?: number;
   longitude?: number;
   office_city?: string;

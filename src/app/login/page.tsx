@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BeaconLogo } from '@/components/BeaconLogo'
-import { getBrowserClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,25 +16,31 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const supabase = getBrowserClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-    if (error) {
-      setError('Invalid email or password. Contact your administrator for access.')
+      if (!res.ok) {
+        setError('Invalid email or password. Contact your administrator for access.')
+        setLoading(false)
+        return
+      }
+
+      // Hard redirect so the proxy sees the new cookie
+      window.location.href = '/dashboard'
+    } catch {
+      setError('Unable to reach the server. Please try again.')
       setLoading(false)
-      return
     }
-
-    router.push('/dashboard')
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F4F8] flex">
+    <div className="min-h-screen bg-beacon-bg flex">
       {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1B5EA8] flex-col justify-between p-12">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1B5EA8] dark:bg-[#0F2847] flex-col justify-between p-12">
         {/* Logo */}
         <div className="flex items-center gap-3">
           <BeaconLogo className="h-10 w-10 text-white" />
@@ -79,22 +84,22 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <BeaconLogo className="h-8 w-8" color="#1B5EA8" />
+            <BeaconLogo className="h-8 w-8" color="var(--beacon-primary)" />
             <div>
-              <p className="text-[#1B5EA8] font-semibold text-lg">Beacon</p>
-              <p className="text-gray-500 text-xs">by American Consumer Credit Counseling</p>
+              <p className="text-beacon-primary font-semibold text-lg">Beacon</p>
+              <p className="text-beacon-text-muted text-xs">by American Consumer Credit Counseling</p>
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in to Beacon</h2>
-          <p className="text-gray-500 text-sm mb-8">
+          <h2 className="text-2xl font-bold text-beacon-text mb-2">Sign in to Beacon</h2>
+          <p className="text-beacon-text-secondary text-sm mb-8">
             Access is restricted to ACCC staff. Contact your administrator if you need
             access.
           </p>
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-beacon-text-secondary mb-1.5">
                 Email address
               </label>
               <input
@@ -103,17 +108,17 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@consumercredit.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5EA8] focus:border-transparent"
+                className="w-full px-4 py-3 border border-beacon-border rounded-lg text-sm bg-beacon-surface text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/30 focus:border-transparent"
                 autoComplete="email"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-beacon-text-secondary">
                   Password
                 </label>
-                <a href="#" className="text-sm text-[#1B5EA8] hover:underline">
+                <a href="#" className="text-sm text-beacon-primary hover:underline">
                   Forgot password?
                 </a>
               </div>
@@ -123,26 +128,26 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5EA8] focus:border-transparent"
+                className="w-full px-4 py-3 border border-beacon-border rounded-lg text-sm bg-beacon-surface text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/30 focus:border-transparent"
                 autoComplete="current-password"
               />
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 font-medium">{error}</p>
+              <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#1B5EA8] text-white py-3 rounded-lg text-sm font-semibold hover:bg-[#144A87] transition-colors disabled:opacity-60"
+              className="w-full bg-beacon-primary text-white py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors disabled:opacity-60"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <p className="text-xs text-gray-400 text-center">
+          <div className="mt-8 pt-8 border-t border-beacon-border">
+            <p className="text-xs text-beacon-text-muted text-center">
               Beacon is a community outreach platform operated by Red Planet
               Data exclusively for American Consumer Credit Counseling staff.
             </p>

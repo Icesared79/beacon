@@ -60,6 +60,66 @@ interface ProspectRecord {
   [key: string]: unknown;
 }
 
+// ── Residential-only filtering: ACCC serves consumers only ──
+const BUSINESS_KEYWORDS = [
+  'LLC', ' LP ', ' LP,', ' INC', ' CORP', 'PROPERTIES', 'APARTMENTS',
+  'INVESTMENTS', 'MANAGEMENT', 'REALTY', 'ASSOCIATES', ' GROUP',
+  'HOLDINGS', 'VENTURES', ' LTD', 'PARTNERS', 'PARTNERSHIP',
+  'COMPANY', 'ENTERPRISES', 'DEVELOPMENT', 'SERVICES',
+  'CAPITAL', 'FUNDING', 'ACQUISITIONS', 'ASSET',
+  'COMMERCIAL', 'REAL ESTATE', 'BORROWER', 'INTERMEDIARY',
+  'HOA ', 'LLLP', 'REIT', 'LEASING',
+];
+
+const INSTITUTIONAL_KEYWORDS = [
+  'CENTER', 'CENTRE', 'CHURCH', 'BIBLE', 'MINISTRY', 'MINISTRIES',
+  'TEMPLE', 'MOSQUE', 'SYNAGOGUE', 'CONGREGATION', 'PARISH',
+  'TRANSIT', 'AUTHORITY', 'TRANSPORTATION', 'DISTRICT',
+  'COUNTY', 'CITY OF ', 'STATE OF ', 'FEDERAL',
+  'DEPARTMENT', 'SCHOOL', 'UNIVERSITY', 'COLLEGE', 'ACADEMY',
+  'FOUNDATION', 'HOSPITAL', 'CLINIC', 'MUSEUM',
+  'COMMUNITY', 'ASSOCIATION', 'SOCIETY', 'COMMISSION',
+  'KOLLEL', 'YESHIVA',
+];
+
+const PERSONAL_TRUST_WORDS = [
+  'FAMILY TRUST', 'REVOCABLE TRUST', 'LIVING TRUST',
+  'SURVIVOR TRUST', 'IRREVOCABLE TRUST',
+];
+
+function isNonResidential(name: string): boolean {
+  if (!name || name.trim().length < 4) return true;
+  const upper = (name || '').toUpperCase();
+
+  // Address-style names (starts with digits, no comma)
+  if (/^\d+\s/.test(upper) && !name.includes(',')) return true;
+
+  // All digits
+  if (/^[\d\s]+$/.test(upper)) return true;
+
+  // Personal trusts are OK
+  if (PERSONAL_TRUST_WORDS.some(w => upper.includes(w))) return false;
+
+  // Business entities
+  if (BUSINESS_KEYWORDS.some(kw => upper.includes(kw))) return true;
+
+  // Institutional
+  if (INSTITUTIONAL_KEYWORDS.some(kw => upper.includes(kw))) return true;
+
+  // Generic "TRUST" without personal indicators
+  if (upper.includes('TRUST')) return true;
+
+  return false;
+}
+
+/** Check if prospect has at least one hard distress signal */
+function hasHardDistress(rec: ProspectRecord): boolean {
+  return Boolean(
+    rec.has_tax_delinquency || rec.has_lis_pendens ||
+    rec.has_dissolved_llc || rec.has_bankruptcy || rec.has_probate
+  );
+}
+
 function buildProspects(rows: RawSignalRow[], state: string, limit: number): ProspectRecord[] {
   const parcelSignals: Record<string, string[]> = {};
   const parcelData: Record<string, RawSignalRow> = {};
@@ -78,9 +138,12 @@ function buildProspects(rows: RawSignalRow[], state: string, limit: number): Pro
   }
 
   const prospects: ProspectRecord[] = [];
-  const parcelIds = Object.keys(parcelData).slice(0, limit);
+  // Filter: residential only, valid owner names
+  const residentialIds = Object.keys(parcelData)
+    .filter(pid => !isNonResidential(parcelData[pid].owner_name))
+    .slice(0, limit * 2); // Over-fetch since we'll filter by distress below
 
-  for (const pid of parcelIds) {
+  for (const pid of residentialIds) {
     const data = parcelData[pid];
     const signals = [...new Set(parcelSignals[pid])];
     const assessed = Number(data.total_assessed_value || data.market_value || 0);
@@ -111,10 +174,12 @@ function buildProspects(rows: RawSignalRow[], state: string, limit: number): Pro
         yearsHeld = Math.round(((Date.now() - saleDate.getTime()) / (365.25 * 86400000)) * 10) / 10;
       }
     }
+    // Cap at 35 years max
+    if (yearsHeld !== null && yearsHeld > 35) yearsHeld = 35;
 
     const dates = (parcelDates[pid] || []).sort().reverse();
 
-    prospects.push({
+    const rec: ProspectRecord = {
       address: (data.address || '').trim(),
       city: (data.city || '').trim(),
       state,
@@ -148,7 +213,13 @@ function buildProspects(rows: RawSignalRow[], state: string, limit: number): Pro
       status: 'new',
       atlas_parcel_id: pid,
       source: 'atlas',
-    });
+    };
+
+    // Only include records with at least one hard distress signal
+    if (hasHardDistress(rec)) {
+      prospects.push(rec);
+      if (prospects.length >= limit) break;
+    }
   }
 
   return prospects;

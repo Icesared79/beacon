@@ -6,7 +6,7 @@ import { Download, ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
 import { getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-helpers';
 import type { Prospect, InterventionStage } from '@/lib/prospect-helpers';
-import { cn, formatCurrency, formatNumber, getScoreLabel } from '@/lib/utils';
+import { cn, formatCurrency, formatNumber, getScoreLabel, formatOwnerName } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
 
@@ -170,7 +170,7 @@ export default function ProspectsPage() {
       const signals = getSignalsForProspect(p)
         .map((s) => SIGNAL_COLORS[s as keyof typeof SIGNAL_COLORS]?.label || s)
         .join('; ');
-      return `"${p.owner_name}",${p.years_held},"${p.address}","${p.city}","${p.state}",${p.estimated_equity},${p.compound_score},"${signals}","${getSuggestedService(p)}","${getInterventionStage(p)}"`;
+      return `"${formatOwnerName(p.owner_name)}",${p.years_held || 'Unknown'},"${p.address}","${p.city}","${p.state}",${p.estimated_equity},${p.compound_score},"${signals}","${getSuggestedService(p)}","${getInterventionStage(p)}"`;
     });
     const csv = header + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -203,7 +203,7 @@ export default function ProspectsPage() {
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-beacon-text-secondary bg-white border border-beacon-border rounded-lg hover:bg-beacon-surface-alt transition-colors"
+          className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-beacon-text-secondary bg-beacon-surface border border-beacon-border rounded-lg hover:bg-beacon-surface-alt transition-colors"
         >
           <Download size={15} />
           Export
@@ -223,7 +223,7 @@ export default function ProspectsPage() {
               'px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all',
               activeQuickFilter === qf.id
                 ? 'bg-beacon-primary text-white border-beacon-primary shadow-sm'
-                : 'bg-white text-beacon-text-secondary border-beacon-border hover:bg-beacon-surface-alt hover:border-beacon-border-dark'
+                : 'bg-beacon-surface text-beacon-text-secondary border-beacon-border hover:bg-beacon-surface-alt hover:border-beacon-border-dark'
             )}
             title={qf.description}
           >
@@ -233,7 +233,7 @@ export default function ProspectsPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white rounded-xl border border-beacon-border p-4 mb-6">
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted" />
@@ -290,7 +290,7 @@ export default function ProspectsPage() {
       </div>
 
       {/* Household table */}
-      <div className="bg-white rounded-xl border border-beacon-border overflow-hidden">
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <colgroup>
@@ -346,10 +346,10 @@ export default function ProspectsPage() {
                 return (
                   <tr key={prospect.id} className="hover:bg-beacon-surface-alt/30 transition-colors group">
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-medium text-beacon-text truncate">{prospect.owner_name}</p>
+                      <p className="text-sm font-medium text-beacon-text truncate">{formatOwnerName(prospect.owner_name)}</p>
                     </td>
                     <td className="px-2 py-3.5 text-center">
-                      <p className="text-sm text-beacon-text tabular-nums">{prospect.years_held ?? '—'}</p>
+                      <p className="text-sm text-beacon-text tabular-nums">{prospect.years_held ? `${Math.round(prospect.years_held)}` : 'Unknown'}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="text-sm text-beacon-text truncate">{prospect.address}</p>

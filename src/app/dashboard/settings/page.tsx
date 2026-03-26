@@ -13,7 +13,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <User size={15} className="text-beacon-primary" />
             Profile
@@ -47,7 +47,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Building2 size={15} className="text-beacon-primary" />
             Office
@@ -74,7 +74,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Bell size={15} className="text-beacon-primary" />
             Notifications
@@ -93,13 +93,13 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Settings size={15} className="text-beacon-primary" />
             Data
           </h2>
           <div className="space-y-2 text-sm text-beacon-text-secondary">
-            <p>Atlas connection: <span className="text-emerald-600 font-medium">Connected</span></p>
+            <p>Atlas connection: <span className="text-emerald-600 dark:text-emerald-400 font-medium">Connected</span></p>
             <p>Last sync: <span className="font-medium">March 24, 2026</span></p>
             <p>Records loaded: <span className="font-medium">18,247 households</span></p>
           </div>

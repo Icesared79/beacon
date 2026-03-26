@@ -33,13 +33,13 @@ export const beaconTheme = {
 } as const;
 
 export const SIGNAL_COLORS = {
-  lis_pendens: { bg: 'bg-red-100', text: 'text-red-700', label: 'Foreclosure Risk' },
-  tax_delinquency: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Tax Delinquent' },
-  llc_dissolved: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'LLC Dissolved' },
-  bankruptcy: { bg: 'bg-red-100', text: 'text-red-800', label: 'Bankruptcy' },
-  long_hold: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Established Homeowner' },
-  high_equity: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Equity at Risk' },
-  probate: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Probate' },
+  lis_pendens: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', label: 'Foreclosure Risk' },
+  tax_delinquency: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', label: 'Tax Delinquent' },
+  llc_dissolved: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400', label: 'LLC Dissolved' },
+  bankruptcy: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-400', label: 'Bankruptcy' },
+  long_hold: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400', label: 'Established Homeowner' },
+  high_equity: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', label: 'Equity at Risk' },
+  probate: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400', label: 'Probate' },
 } as const;
 
 export const STATUS_FLOW = [

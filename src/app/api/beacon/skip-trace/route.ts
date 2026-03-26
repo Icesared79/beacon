@@ -2,6 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const TRACERFY_BASE = 'https://tracerfy.com/v1/api';
 
+// ──────────────────────────────────────────────────────────────────
+// Tracerfy Instant Trace — /trace/lookup/
+// Synchronous single-lookup endpoint. Returns results immediately.
+// No CSV upload, no polling, no queue IDs.
+// ──────────────────────────────────────────────────────────────────
+
+interface TracerfyPhone {
+  number: string;
+  type: string;
+  dnc: boolean;
+  carrier?: string;
+  rank?: number;
+}
+
+interface TracerfyEmail {
+  email: string;
+  rank?: number;
+}
+
+interface TracerfyPerson {
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  dob?: string;
+  age?: string;
+  deceased?: boolean;
+  property_owner?: boolean;
+  litigator?: boolean;
+  mailing_address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  phones?: TracerfyPhone[];
+  emails?: TracerfyEmail[];
+}
+
+interface TracerfyLookupResponse {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  hit: boolean;
+  persons_count: number;
+  credits_deducted: number;
+  persons: TracerfyPerson[];
+}
+
 function parseOwnerName(ownerName: string): { firstName: string; lastName: string } {
   const trimmed = ownerName.trim();
   if (trimmed.includes(',')) {
@@ -13,107 +62,38 @@ function parseOwnerName(ownerName: string): { firstName: string; lastName: strin
   return { firstName: parts[0], lastName: parts[parts.length - 1] };
 }
 
-function csvQuote(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return '"' + value.replace(/"/g, '""') + '"';
-  }
-  return value;
-}
+function mapPersonToResult(person: TracerfyPerson) {
+  const phones = (person.phones || []).map((p) => ({
+    number: p.number,
+    type: p.type || 'Unknown',
+    dnc: p.dnc ?? false,
+    carrier: p.carrier || '',
+  }));
 
-function getField(data: Record<string, unknown>, ...keys: string[]): string | undefined {
-  for (const key of keys) {
-    if (data[key] !== undefined && data[key] !== null) return String(data[key]);
-  }
-  return undefined;
-}
+  const emails = (person.emails || []).map((e) => e.email).filter(Boolean);
 
-interface SkipTraceResult {
-  phones: Array<{ number: string; type: string }>;
-  emails: string[];
-  mailingAddress: { street: string; city: string; state: string; zip: string } | null;
-}
-
-function mapTracerfyRow(data: Record<string, unknown>): SkipTraceResult {
-  const phones: SkipTraceResult['phones'] = [];
-  const emails: string[] = [];
-
-  const primaryPhone = getField(data, 'primary_phone', 'Primary-phone');
-  if (primaryPhone?.trim()) {
-    phones.push({ number: primaryPhone.trim(), type: 'Primary' });
-  }
-  for (let i = 1; i <= 5; i++) {
-    const phone = getField(data, `Mobile-${i}`, `mobile_${i}`, `mobile-${i}`);
-    if (phone?.trim()) phones.push({ number: phone.trim(), type: 'Mobile' });
-  }
-  for (let i = 1; i <= 3; i++) {
-    const phone = getField(data, `Landline-${i}`, `landline_${i}`, `landline-${i}`);
-    if (phone?.trim()) phones.push({ number: phone.trim(), type: 'Landline' });
-  }
-  for (let i = 1; i <= 5; i++) {
-    const email = getField(data, `Email-${i}`, `email_${i}`, `email-${i}`);
-    if (email?.trim()) emails.push(email.trim());
-  }
-
-  let mailingAddress: SkipTraceResult['mailingAddress'] = null;
-  const street = getField(data, 'mail_address', 'mailing_address', 'Mail-address');
-  const city = getField(data, 'mail_city', 'mailing_city', 'Mail-city');
-  const state = getField(data, 'mail_state', 'mailing_state', 'Mail-state');
-  const zip = getField(data, 'mailing_zip', 'mail_zip', 'Mail-zip');
-  if (street?.trim()) {
-    mailingAddress = {
-      street: street.trim(),
-      city: (city || '').trim(),
-      state: (state || '').trim(),
-      zip: (zip || '').trim(),
-    };
-  }
-
-  return { phones, emails, mailingAddress };
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
+  const mailingAddress = person.mailing_address?.street
+    ? {
+        street: person.mailing_address.street,
+        city: person.mailing_address.city || '',
+        state: person.mailing_address.state || '',
+        zip: person.mailing_address.zip || '',
       }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  result.push(current);
-  return result;
-}
+    : null;
 
-function parseCSVToRecords(csvText: string): Record<string, unknown>[] {
-  const lines = csvText.trim().split('\n').filter((l) => l.trim());
-  if (lines.length < 2) return [];
-  const headers = parseCSVLine(lines[0]);
-  const records: Record<string, unknown>[] = [];
-  for (let r = 1; r < lines.length; r++) {
-    const values = parseCSVLine(lines[r]);
-    const record: Record<string, unknown> = {};
-    for (let i = 0; i < headers.length; i++) {
-      record[headers[i].trim()] = values[i]?.trim() || '';
-    }
-    records.push(record);
-  }
-  return records;
+  return {
+    name: person.full_name || `${person.first_name} ${person.last_name}`,
+    deceased: person.deceased ?? false,
+    propertyOwner: person.property_owner ?? false,
+    phones,
+    emails,
+    mailingAddress,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────
-// POST — Submit a skip trace job to Tracerfy. Returns { queueId }.
-// Completes in <5s so it fits within Vercel Hobby 10s limit.
+// POST — Single instant lookup via /trace/lookup/
+// Returns results synchronously — no polling needed.
 // ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const { name, address, city, state, zip } = await req.json();
@@ -123,154 +103,88 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Skip trace not configured' }, { status: 503 });
   }
 
-  const { firstName, lastName } = parseOwnerName(name);
+  if (!address || !city || !state) {
+    return NextResponse.json({ error: 'address, city, and state are required' }, { status: 400 });
+  }
 
-  const csvHeader = 'first_name,last_name,address,city,state,mail_address,mail_city,mail_state';
-  const csvRow = [firstName, lastName, address, city, state, '', '', ''].map(csvQuote).join(',');
-  const csvContent = csvHeader + '\n' + csvRow;
+  const { firstName, lastName } = parseOwnerName(name || '');
 
-  const formData = new FormData();
-  formData.append('csv_file', new Blob([csvContent], { type: 'text/csv' }), 'lookup.csv');
-  formData.append('first_name_column', 'first_name');
-  formData.append('last_name_column', 'last_name');
-  formData.append('address_column', 'address');
-  formData.append('city_column', 'city');
-  formData.append('state_column', 'state');
-  formData.append('mail_address_column', 'mail_address');
-  formData.append('mail_city_column', 'mail_city');
-  formData.append('mail_state_column', 'mail_state');
+  // Build the instant lookup payload
+  const lookupPayload: Record<string, unknown> = {
+    address,
+    city,
+    state,
+    zip: zip || '',
+    find_owner: true,
+  };
+
+  // Include name if available — helps Tracerfy match
+  if (firstName && firstName !== lastName) {
+    lookupPayload.first_name = firstName;
+    lookupPayload.last_name = lastName;
+  }
+
+  console.log('[skip-trace] Instant lookup request:', JSON.stringify(lookupPayload));
 
   try {
-    const submitRes = await fetch(`${TRACERFY_BASE}/trace/`, {
+    const res = await fetch(`${TRACERFY_BASE}/trace/lookup/`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(lookupPayload),
     });
 
-    if (!submitRes.ok) {
-      const errText = await submitRes.text();
-      console.error(`[skip-trace] Submit failed (${submitRes.status}): ${errText}`);
+    const rawText = await res.text();
+    console.log(`[skip-trace] Tracerfy response status: ${res.status}`);
+    console.log(`[skip-trace] Tracerfy raw response: ${rawText.substring(0, 500)}`);
+
+    if (!res.ok) {
+      console.error(`[skip-trace] Tracerfy error (${res.status}): ${rawText}`);
       return NextResponse.json({ error: 'Contact lookup temporarily unavailable' }, { status: 502 });
     }
 
-    const submitData = await submitRes.json();
-    console.log('[skip-trace] Submit response:', JSON.stringify(submitData));
-    const queueId = String(submitData.queue_id ?? submitData.id ?? '');
-    if (!queueId) {
-      return NextResponse.json({ error: 'Failed to queue lookup' }, { status: 502 });
+    let data: TracerfyLookupResponse;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      console.error('[skip-trace] Failed to parse Tracerfy response');
+      return NextResponse.json({ error: 'Invalid response from lookup service' }, { status: 502 });
     }
 
-    return NextResponse.json({ queueId });
-  } catch (err) {
-    console.error('[skip-trace] Submit error:', err);
-    return NextResponse.json({ error: 'Failed to submit lookup' }, { status: 502 });
-  }
-}
+    console.log(`[skip-trace] hit=${data.hit}, persons=${data.persons_count}, credits=${data.credits_deducted}`);
 
-// ──────────────────────────────────────────────────────────────────
-// GET — Poll for results. Client calls this repeatedly until done.
-// Each call is a single check — completes in <5s.
-//
-// The client passes &attempt=N so we know how long we've been waiting.
-// Tracerfy returns [] (empty array) both while processing AND when
-// there are no results for the address. After ~35s of empty arrays
-// we treat it as "complete with no results found."
-// ──────────────────────────────────────────────────────────────────
-export async function GET(req: NextRequest) {
-  const queueId = req.nextUrl.searchParams.get('queueId');
-  const attempt = Number(req.nextUrl.searchParams.get('attempt') || '0');
+    if (!data.hit || !data.persons || data.persons.length === 0) {
+      return NextResponse.json({
+        status: 'complete',
+        hit: false,
+        persons: [],
+        phones: [],
+        emails: [],
+        mailingAddress: null,
+      });
+    }
 
-  if (!queueId) {
-    return NextResponse.json({ error: 'Missing queueId' }, { status: 400 });
-  }
+    // Map all persons
+    const persons = data.persons.map(mapPersonToResult);
 
-  const apiKey = process.env.TRACERFY_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'Skip trace not configured' }, { status: 503 });
-  }
+    // Flatten the first (best-ranked) person for backward-compatible fields
+    const primary = persons[0];
 
-  try {
-    const pollRes = await fetch(`${TRACERFY_BASE}/queue/${queueId}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    return NextResponse.json({
+      status: 'complete',
+      hit: true,
+      personsCount: data.persons_count,
+      creditsUsed: data.credits_deducted,
+      persons,
+      // Flat fields from primary person for simple UI consumption
+      phones: primary.phones,
+      emails: primary.emails,
+      mailingAddress: primary.mailingAddress,
     });
-
-    if (!pollRes.ok) {
-      console.log(`[skip-trace] Poll HTTP ${pollRes.status}`);
-      // After enough attempts, give up
-      if (attempt >= 8) {
-        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-      }
-      return NextResponse.json({ status: 'pending' });
-    }
-
-    const pollData = await pollRes.json();
-
-    // Format A: Array of result objects — we have data
-    if (Array.isArray(pollData) && pollData.length > 0) {
-      const result = mapTracerfyRow(pollData[0] as Record<string, unknown>);
-      return NextResponse.json({ status: 'complete', ...result });
-    }
-
-    // Format B: Status object with download_url
-    if (pollData && typeof pollData === 'object' && !Array.isArray(pollData)) {
-      const obj = pollData as Record<string, unknown>;
-      const isPending = obj.pending === true || obj.status === 'pending' || obj.status === 'processing';
-
-      if (!isPending && obj.download_url) {
-        try {
-          const dlRes = await fetch(obj.download_url as string, {
-            headers: { Authorization: `Bearer ${apiKey}` },
-          });
-          if (dlRes.ok) {
-            const contentType = dlRes.headers.get('content-type') || '';
-            let records: Record<string, unknown>[] = [];
-            if (contentType.includes('json')) {
-              const dlData = await dlRes.json();
-              if (Array.isArray(dlData)) records = dlData as Record<string, unknown>[];
-            } else {
-              const csvText = await dlRes.text();
-              records = parseCSVToRecords(csvText);
-            }
-            if (records.length > 0) {
-              const result = mapTracerfyRow(records[0]);
-              return NextResponse.json({ status: 'complete', ...result });
-            }
-          }
-        } catch {
-          // fall through
-        }
-        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-      }
-
-      if (!isPending && !obj.download_url) {
-        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-      }
-
-      // Still pending — but give up after enough attempts
-      if (attempt >= 8) {
-        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-      }
-      return NextResponse.json({ status: 'pending' });
-    }
-
-    // Format C: Empty array — Tracerfy returns this both while processing
-    // and when no results exist. After 8+ attempts (~35s), treat as done.
-    if (Array.isArray(pollData) && pollData.length === 0) {
-      if (attempt >= 8) {
-        return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-      }
-      return NextResponse.json({ status: 'pending' });
-    }
-
-    if (attempt >= 8) {
-      return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-    }
-    return NextResponse.json({ status: 'pending' });
   } catch (err) {
-    console.error('[skip-trace] Poll error:', err);
-    if (attempt >= 8) {
-      return NextResponse.json({ status: 'complete', phones: [], emails: [], mailingAddress: null });
-    }
-    return NextResponse.json({ status: 'pending' });
+    console.error('[skip-trace] Lookup error:', err);
+    return NextResponse.json({ error: 'Failed to complete lookup' }, { status: 502 });
   }
 }

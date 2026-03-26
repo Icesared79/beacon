@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --beacon-primary: #1B5EA8;
   --beacon-primary-dark: #144A87;
@@ -23,6 +25,30 @@
   --beacon-text-muted: #94A3B8;
   --background: #F8FAFC;
   --foreground: #0F172A;
+}
+
+.dark {
+  --beacon-primary: #4B9AE8;
+  --beacon-primary-dark: #6BB0F0;
+  --beacon-primary-light: #3A88D4;
+  --beacon-primary-muted: #1A2A42;
+  --beacon-accent: #F0783A;
+  --beacon-accent-light: #2A1A10;
+  --beacon-critical: #EF4444;
+  --beacon-high: #F59E0B;
+  --beacon-warning: #EAB308;
+  --beacon-info: #60A5FA;
+  --beacon-success: #34D399;
+  --beacon-bg: #0B1120;
+  --beacon-surface: #111827;
+  --beacon-surface-alt: #1E293B;
+  --beacon-border: #1E293B;
+  --beacon-border-dark: #334155;
+  --beacon-text: #F1F5F9;
+  --beacon-text-secondary: #CBD5E1;
+  --beacon-text-muted: #64748B;
+  --background: #0B1120;
+  --foreground: #F1F5F9;
 }
 
 @theme inline {

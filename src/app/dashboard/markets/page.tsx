@@ -2,262 +2,326 @@
 
 import { useState, useMemo } from 'react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import { TrendingUp, TrendingDown, Minus, AlertCircle, Users as UsersIcon, Target } from 'lucide-react';
-import { USMap } from '@/components/USMap';
+  Building2,
+  AlertTriangle,
+  Users as UsersIcon,
+  AlertCircle,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+} from 'lucide-react';
 import {
   ACCC_MARKETS,
   ACCC_OFFICES,
-  MONTHLY_TREND,
-  SIGNAL_BREAKDOWN,
+  type MarketData,
 } from '@/lib/market-data';
 import { formatNumber } from '@/lib/utils';
 
-function getTrendIcon(trend: string) {
-  switch (trend) {
-    case 'rising': return <TrendingUp size={14} className="text-red-500" />;
-    case 'declining': return <TrendingDown size={14} className="text-emerald-500" />;
-    default: return <Minus size={14} className="text-slate-400" />;
-  }
+/* ── Types ── */
+
+interface CoverageRow {
+  city: string;
+  state: string;
+  hasOffice: boolean;
+  coverage: 'active' | 'no_data';
+  households: number;
+  urgent: number;
+  needScore: number;
+  isGap: boolean;
 }
 
-function getTrendLabel(trend: string) {
-  switch (trend) {
-    case 'rising': return 'Rising';
-    case 'declining': return 'Declining';
-    default: return 'Stable';
+/* ── Build unified coverage rows ── */
+
+const OFFICE_SET = new Set(ACCC_OFFICES.map((o) => `${o.city}|${o.state}`));
+
+function buildCoverageRows(): CoverageRow[] {
+  const rows: CoverageRow[] = [];
+  const seen = new Set<string>();
+
+  // Markets with data
+  for (const m of ACCC_MARKETS) {
+    const key = `${m.city}|${m.state}`;
+    seen.add(key);
+    const hasOffice = OFFICE_SET.has(key);
+    rows.push({
+      city: m.city,
+      state: m.state,
+      hasOffice,
+      coverage: 'active',
+      households: m.prospects,
+      urgent: m.critical,
+      needScore: m.score,
+      isGap: false,
+    });
   }
+
+  // Offices with no market data = coverage gaps
+  for (const o of ACCC_OFFICES) {
+    const key = `${o.city}|${o.state}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      rows.push({
+        city: o.city,
+        state: o.state,
+        hasOffice: true,
+        coverage: 'no_data',
+        households: 0,
+        urgent: 0,
+        needScore: 0,
+        isGap: true,
+      });
+    }
+  }
+
+  return rows;
 }
 
-export default function MarketsPage() {
-  const [selectedOffice, setSelectedOffice] = useState<string | null>(null);
+const ALL_ROWS = buildCoverageRows();
 
-  const filteredMarkets = useMemo(() => {
-    if (!selectedOffice) return ACCC_MARKETS;
-    return ACCC_MARKETS.filter((m) => m.city === selectedOffice);
-  }, [selectedOffice]);
+/* ── Sort logic ── */
 
-  const totals = useMemo(() => {
-    const data = filteredMarkets;
-    return {
-      prospects: data.reduce((s, m) => s + m.prospects, 0),
-      critical: data.reduce((s, m) => s + m.critical, 0),
-      avgScore: Math.round(data.reduce((s, m) => s + m.score, 0) / data.length),
-    };
-  }, [filteredMarkets]);
+type SortCol = 'market' | 'office' | 'coverage' | 'households' | 'urgent' | 'needScore';
 
-  const officesWithProspects = ACCC_OFFICES.map((o) => {
-    const market = ACCC_MARKETS.find((m) => m.city === o.city);
-    return {
-      ...o,
-      prospects: market?.prospects || 0,
-      critical: market?.critical || 0,
-      score: market?.score || 0,
-      address: '',
-    };
-  });
+function defaultSort(a: CoverageRow, b: CoverageRow): number {
+  // Gaps first
+  if (a.isGap !== b.isGap) return a.isGap ? -1 : 1;
+  // Then active by need score desc
+  if (a.coverage === 'active' && b.coverage === 'active') return b.needScore - a.needScore;
+  // Then no-office last
+  if (!a.hasOffice && b.hasOffice) return 1;
+  if (a.hasOffice && !b.hasOffice) return -1;
+  return 0;
+}
+
+/* ── Score badge ── */
+
+function scoreBadgeColor(score: number): string {
+  if (score >= 80) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+  if (score >= 65) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+  if (score >= 50) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+  return 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
+}
+
+/* ── Page ── */
+
+export default function CoveragePage() {
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortAsc, setSortAsc] = useState(false);
+  const rows = useMemo(() => {
+    const sorted = [...ALL_ROWS];
+    if (!sortCol) {
+      sorted.sort(defaultSort);
+      return sorted;
+    }
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      switch (sortCol) {
+        case 'market':
+          cmp = a.city.localeCompare(b.city);
+          break;
+        case 'office':
+          cmp = (a.hasOffice ? 1 : 0) - (b.hasOffice ? 1 : 0);
+          break;
+        case 'coverage':
+          cmp = a.coverage.localeCompare(b.coverage);
+          break;
+        case 'households':
+          cmp = a.households - b.households;
+          break;
+        case 'urgent':
+          cmp = a.urgent - b.urgent;
+          break;
+        case 'needScore':
+          cmp = a.needScore - b.needScore;
+          break;
+      }
+      return sortAsc ? cmp : -cmp;
+    });
+    return sorted;
+  }, [sortCol, sortAsc]);
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortCol(col);
+      setSortAsc(false);
+    }
+  };
+
+  /* Aggregates */
+  const marketsActive = ALL_ROWS.filter((r) => r.coverage === 'active').length;
+  const marketsNoData = ALL_ROWS.filter((r) => r.isGap).length;
+  const totalHouseholds = ALL_ROWS.reduce((s, r) => s + r.households, 0);
+
+  const SortIcon = ({ col }: { col: SortCol }) => {
+    if (sortCol !== col) return <ArrowUpDown size={12} className="text-beacon-text-muted ml-1" />;
+    return sortAsc
+      ? <ArrowUp size={12} className="text-beacon-primary ml-1" />
+      : <ArrowDown size={12} className="text-beacon-primary ml-1" />;
+  };
+
+  const thClass = 'text-left text-[11px] font-semibold text-beacon-text-muted uppercase tracking-wider px-3 py-2.5 cursor-pointer select-none hover:text-beacon-text transition-colors whitespace-nowrap';
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-beacon-text tracking-tight">Community Needs Map</h1>
+          <h1 className="text-xl font-bold text-beacon-text tracking-tight">
+            Coverage Intelligence
+          </h1>
           <p className="text-sm text-beacon-text-muted mt-1">
-            Where do people in your community need help right now?
+            Where Beacon is working — and where it isn&apos;t yet.
           </p>
         </div>
-        <div>
-          <select
-            value={selectedOffice || ''}
-            onChange={(e) => setSelectedOffice(e.target.value || null)}
-            className="text-sm border border-beacon-border rounded-lg px-3 py-2 bg-white text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
-          >
-            <option value="">All Offices</option>
-            {ACCC_OFFICES.map((o) => (
-              <option key={o.city} value={o.city}>
-                {o.city}, {o.state}
-              </option>
-            ))}
-          </select>
+      </div>
+
+      {/* ── Summary Tiles ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Building2 size={13} className="text-green-600 dark:text-green-400" />
+            <span className="text-[10px] font-medium text-beacon-text-muted uppercase tracking-wider">
+              Markets Active
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-beacon-text">{marketsActive}</p>
+        </div>
+
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border border-l-[3px] border-l-red-500 p-4 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <AlertTriangle size={13} className="text-red-500" />
+            <span className="text-[10px] font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
+              Markets with No Coverage
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{marketsNoData}</p>
+        </div>
+
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <UsersIcon size={13} className="text-beacon-primary" />
+            <span className="text-[10px] font-medium text-beacon-text-muted uppercase tracking-wider">
+              Total Households Identified
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-beacon-text">{formatNumber(totalHouseholds)}</p>
         </div>
       </div>
 
-      {/* US Map */}
-      <div className="bg-white rounded-xl border border-beacon-border mb-6 overflow-hidden">
-        <USMap
-          offices={officesWithProspects}
-          onOfficeClick={(o) => setSelectedOffice(o.city === selectedOffice ? null : o.city)}
-        />
-      </div>
-
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-beacon-border p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <UsersIcon size={16} className="text-beacon-primary" />
-            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Households Identified</span>
-          </div>
-          <p className="text-2xl font-bold text-beacon-text">{formatNumber(totals.prospects)}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-beacon-border p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <AlertCircle size={16} className="text-beacon-critical" />
-            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Urgent Interventions</span>
-          </div>
-          <p className="text-2xl font-bold text-beacon-critical">{formatNumber(totals.critical)}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-beacon-border p-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <Target size={16} className="text-beacon-high" />
-            <span className="text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Avg Need Level</span>
-          </div>
-          <p className="text-2xl font-bold text-beacon-text">{totals.avgScore}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        {/* Market table */}
-        <div className="xl:col-span-2 bg-white rounded-xl border border-beacon-border">
-          <div className="px-5 py-4 border-b border-beacon-border">
-            <h2 className="text-sm font-semibold text-beacon-text">Communities with Greatest Need</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-beacon-border">
-                  <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Community</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Households</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Urgent</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Trend</th>
-                  <th className="text-right px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">Need</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-beacon-border">
-                {filteredMarkets.map((market) => (
-                  <tr key={market.city} className="hover:bg-beacon-surface-alt/50 transition-colors">
-                    <td className="px-5 py-3">
-                      <p className="text-sm font-medium text-beacon-text">{market.city}</p>
-                      <p className="text-xs text-beacon-text-muted">{market.county} County, {market.state}</p>
-                    </td>
-                    <td className="text-right px-4 py-3 text-sm font-medium text-beacon-text">
-                      {formatNumber(market.prospects)}
-                    </td>
-                    <td className="text-right px-4 py-3 text-sm font-medium text-beacon-critical">
-                      {formatNumber(market.critical)}
-                    </td>
-                    <td className="text-center px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-xs font-medium">
-                        {getTrendIcon(market.trend)}
-                        {getTrendLabel(market.trend)}
-                      </span>
-                    </td>
-                    <td className="text-right px-5 py-3">
-                      <span
-                        className="inline-flex items-center justify-center w-9 h-6 rounded-md text-xs font-bold text-white"
-                        style={{
-                          backgroundColor:
-                            market.score >= 80
-                              ? '#DC2626'
-                              : market.score >= 70
-                              ? '#D97706'
-                              : market.score >= 60
-                              ? '#2563EB'
-                              : '#94A3B8',
-                        }}
-                      >
-                        {market.score}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Signal breakdown donut */}
-        <div className="bg-white rounded-xl border border-beacon-border p-5">
-          <h2 className="text-sm font-semibold text-beacon-text mb-4">Distress Indicator Breakdown</h2>
-          <div className="flex justify-center mb-4">
-            <ResponsiveContainer width={200} height={200}>
-              <PieChart>
-                <Pie
-                  data={SIGNAL_BREAKDOWN}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  dataKey="value"
-                  strokeWidth={2}
-                  stroke="#FFFFFF"
+      {/* ── Coverage Table ── */}
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-beacon-border bg-beacon-bg">
+                <th className={thClass} onClick={() => toggleSort('market')}>
+                  <span className="inline-flex items-center">Market <SortIcon col="market" /></span>
+                </th>
+                <th className={thClass} onClick={() => toggleSort('office')}>
+                  <span className="inline-flex items-center">ACCC Office <SortIcon col="office" /></span>
+                </th>
+                <th className={thClass} onClick={() => toggleSort('coverage')}>
+                  <span className="inline-flex items-center">Beacon Coverage <SortIcon col="coverage" /></span>
+                </th>
+                <th className={thClass} onClick={() => toggleSort('households')}>
+                  <span className="inline-flex items-center">Households <SortIcon col="households" /></span>
+                </th>
+                <th className={thClass} onClick={() => toggleSort('urgent')}>
+                  <span className="inline-flex items-center">Urgent <SortIcon col="urgent" /></span>
+                </th>
+                <th className={thClass} onClick={() => toggleSort('needScore')}>
+                  <span className="inline-flex items-center">Need Score <SortIcon col="needScore" /></span>
+                </th>
+                <th className={`${thClass} cursor-default hover:text-beacon-text-muted`}>
+                  <span>Gap</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-beacon-border">
+              {rows.map((row) => (
+                <tr
+                  key={`${row.city}-${row.state}`}
+                  className={`transition-colors ${
+                    row.isGap
+                      ? 'bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
+                      : 'hover:bg-beacon-surface-alt/50'
+                  }`}
                 >
-                  {SIGNAL_BREAKDOWN.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-2">
-            {SIGNAL_BREAKDOWN.map((s) => (
-              <div key={s.name} className="flex items-center gap-2 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                <span className="flex-1 text-beacon-text-secondary">{s.name}</span>
-                <span className="font-semibold text-beacon-text">{s.value}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+                  {/* Market */}
+                  <td className="px-3 py-2.5">
+                    <span className="font-medium text-beacon-text">{row.city}</span>
+                    <span className="text-beacon-text-muted ml-1">{row.state}</span>
+                  </td>
 
-      {/* Monthly trend chart */}
-      <div className="bg-white rounded-xl border border-beacon-border p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-beacon-text">Families Identified as Needing Help (6 Months)</h2>
-          <span className="text-xs text-beacon-text-muted">National total</span>
+                  {/* Office */}
+                  <td className="px-3 py-2.5">
+                    {row.hasOffice ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-xs text-beacon-text-secondary">Yes</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        <span className="text-xs text-beacon-text-muted">No</span>
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Coverage */}
+                  <td className="px-3 py-2.5">
+                    {row.coverage === 'active' ? (
+                      <span className="text-xs font-medium text-green-700 dark:text-green-400">Active</span>
+                    ) : (
+                      <span className="text-xs font-medium text-beacon-text-muted">No Data</span>
+                    )}
+                  </td>
+
+                  {/* Households */}
+                  <td className="px-3 py-2.5 tabular-nums">
+                    {row.households > 0 ? (
+                      <span className="text-beacon-text font-medium">{formatNumber(row.households)}</span>
+                    ) : (
+                      <span className="text-beacon-text-muted">&mdash;</span>
+                    )}
+                  </td>
+
+                  {/* Urgent */}
+                  <td className="px-3 py-2.5 tabular-nums">
+                    {row.urgent > 0 ? (
+                      <span className="text-beacon-text font-medium">{formatNumber(row.urgent)}</span>
+                    ) : (
+                      <span className="text-beacon-text-muted">&mdash;</span>
+                    )}
+                  </td>
+
+                  {/* Need Score */}
+                  <td className="px-3 py-2.5">
+                    {row.needScore > 0 ? (
+                      <span className={`inline-flex items-center justify-center h-5 min-w-[28px] rounded text-[10px] font-bold px-1.5 ${scoreBadgeColor(row.needScore)}`}>
+                        {row.needScore}
+                      </span>
+                    ) : (
+                      <span className="text-beacon-text-muted">&mdash;</span>
+                    )}
+                  </td>
+
+                  {/* Gap Indicator */}
+                  <td className="px-3 py-2.5">
+                    {row.isGap && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        <AlertCircle size={10} />
+                        Coverage Gap
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={MONTHLY_TREND} barCategoryGap="20%">
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 11, fill: '#94A3B8' }}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 11, fill: '#94A3B8' }}
-              tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
-            />
-            <Tooltip
-              formatter={(value) => [formatNumber(Number(value)), 'Families']}
-              contentStyle={{
-                background: '#0F172A',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '12px',
-              }}
-              labelStyle={{ color: '#94A3B8' }}
-            />
-            <Bar dataKey="signals" fill="#1B5EA8" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

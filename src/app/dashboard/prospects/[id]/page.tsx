@@ -26,9 +26,10 @@ import {
 } from 'lucide-react';
 
 import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
-import { getSignalsForProspect } from '@/lib/prospect-helpers';
+import { getSignalsForProspect, getSuggestedService } from '@/lib/prospect-helpers';
 import type { Prospect } from '@/lib/prospect-helpers';
-import { cn, formatCurrency, getScoreColor, getScoreLabel } from '@/lib/utils';
+import { cn, formatCurrency, getScoreColor, getScoreLabel, formatOwnerName } from '@/lib/utils';
+import { StreetView } from '@/components/StreetView';
 
 const EVENT_ICONS: Record<string, string> = {
   tax_delinquency: '💰',
@@ -86,10 +87,10 @@ function formatLookupDate(isoDate: string): string {
 }
 
 const SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
-  critical: { bg: 'bg-red-100', text: 'text-red-700' },
-  high: { bg: 'bg-amber-100', text: 'text-amber-700' },
-  warning: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  info: { bg: 'bg-blue-100', text: 'text-blue-600' },
+  critical: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+  high: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  warning: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400' },
+  info: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' },
 };
 
 interface SignalEvent {
@@ -144,7 +145,124 @@ export default function ProspectDetailPage({
   }, [id]);
 
   const signals = prospect ? getSignalsForProspect(prospect) : [];
-  const events: SignalEvent[] = [];
+
+  // Generate timeline events from prospect hardship flags + dates
+  const events: SignalEvent[] = useMemo(() => {
+    if (!prospect) return [];
+    const first = prospect.first_signal_date;
+    const recent = prospect.most_recent_signal_date;
+    if (!first) return [];
+
+    const items: SignalEvent[] = [];
+    const pid = prospect.id;
+
+    // Helper: interpolate a date between first and recent
+    const interpolate = (frac: number): string => {
+      const d0 = new Date(first);
+      const d1 = recent ? new Date(recent) : new Date();
+      const ms = d0.getTime() + (d1.getTime() - d0.getTime()) * frac;
+      return new Date(ms).toISOString().slice(0, 10);
+    };
+
+    // Tax delinquency — often the earliest warning sign
+    if (prospect.has_tax_delinquency) {
+      items.push({
+        id: `${pid}-tax-1`,
+        prospect_id: pid,
+        signal_type: 'tax_delinquency',
+        severity: 'warning',
+        detected_date: first,
+        description: 'Property tax delinquency detected — past-due balance identified in county records.',
+      });
+      if (prospect.distress_months && prospect.distress_months > 6) {
+        items.push({
+          id: `${pid}-tax-2`,
+          prospect_id: pid,
+          signal_type: 'tax_delinquency',
+          severity: 'high',
+          detected_date: interpolate(0.5),
+          description: 'Tax delinquency persists — risk of tax lien sale increasing.',
+          amount: prospect.assessed_value ? Math.round(prospect.assessed_value * 0.012) : undefined,
+        });
+      }
+    }
+
+    // Lis pendens / foreclosure
+    if (prospect.has_lis_pendens) {
+      items.push({
+        id: `${pid}-lis-1`,
+        prospect_id: pid,
+        signal_type: 'lis_pendens',
+        severity: 'critical',
+        detected_date: interpolate(prospect.has_tax_delinquency ? 0.35 : 0.1),
+        description: 'Lis pendens filed — formal foreclosure proceedings initiated.',
+      });
+    }
+
+    // Bankruptcy
+    if (prospect.has_bankruptcy) {
+      items.push({
+        id: `${pid}-bk-1`,
+        prospect_id: pid,
+        signal_type: 'bankruptcy',
+        severity: 'critical',
+        detected_date: interpolate(prospect.has_lis_pendens ? 0.6 : 0.3),
+        description: 'Bankruptcy filing detected — may need immediate counseling referral.',
+      });
+    }
+
+    // Probate
+    if (prospect.has_probate) {
+      items.push({
+        id: `${pid}-probate-1`,
+        prospect_id: pid,
+        signal_type: 'probate',
+        severity: 'high',
+        detected_date: interpolate(0.2),
+        description: 'Probate filing detected — property may be in estate transition.',
+      });
+    }
+
+    // Dissolved LLC
+    if (prospect.has_dissolved_llc) {
+      items.push({
+        id: `${pid}-llc-1`,
+        prospect_id: pid,
+        signal_type: 'llc_dissolved',
+        severity: 'high',
+        detected_date: interpolate(0.15),
+        description: 'Owning LLC dissolved or inactive — property ownership structure at risk.',
+      });
+    }
+
+    // Long hold
+    if (prospect.is_long_hold && prospect.years_held && prospect.years_held >= 10) {
+      items.push({
+        id: `${pid}-hold-1`,
+        prospect_id: pid,
+        signal_type: 'long_hold',
+        severity: 'info',
+        detected_date: first,
+        description: `Property held for ${Math.round(prospect.years_held)} years — established homeowner with deep community ties.`,
+      });
+    }
+
+    // High equity
+    if (prospect.is_high_equity && prospect.estimated_equity && prospect.estimated_equity >= 50000) {
+      items.push({
+        id: `${pid}-equity-1`,
+        prospect_id: pid,
+        signal_type: 'high_equity',
+        severity: 'info',
+        detected_date: interpolate(0.05),
+        description: `${formatCurrency(prospect.estimated_equity)} in home equity at stake — significant family wealth to protect.`,
+      });
+    }
+
+    // Sort chronologically
+    items.sort((a, b) => a.detected_date.localeCompare(b.detected_date));
+    return items;
+  }, [prospect]);
 
   // Load any previously saved lookup on mount
   useEffect(() => {
@@ -242,7 +360,7 @@ export default function ProspectDetailPage({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: prospect.owner_name,
+          name: formattedName,
           address: prospect.address,
           city: prospect.city,
           state: prospect.state,
@@ -281,27 +399,8 @@ export default function ProspectDetailPage({
     }
   }
 
-  // Build "what does this family need" explanation
-  const equity = prospect.estimated_equity || 0;
-  const signalCount = prospect.signal_count || 0;
-  const ownerLast = (prospect.owner_name || '').split(' ').pop() || 'Owner';
-  const yearsHeld = prospect.years_held || 0;
-  let explanation = '';
-  let interventionWindow = '';
-  let suggestedService = '';
-  if (prospect.compound_score >= 80) {
-    explanation = `The ${ownerLast} family is at high risk of losing their home. They have ${formatCurrency(equity)} in home equity${yearsHeld ? ` built over ${yearsHeld} years` : ''} that they stand to lose. With ${signalCount} simultaneous distress indicators, they may benefit from ACCC's debt management program — early intervention could help them avoid foreclosure and protect their family's wealth.`;
-    interventionWindow = 'Late stage — foreclosure or bankruptcy proceedings may already be underway. Immediate outreach recommended.';
-    suggestedService = prospect.has_bankruptcy ? 'Bankruptcy Counseling' : prospect.has_lis_pendens ? 'Foreclosure Prevention' : 'Debt Management Program (DMP)';
-  } else if (prospect.is_long_hold && prospect.is_high_equity) {
-    explanation = `The ${ownerLast} family has lived in their home${yearsHeld ? ` for ${yearsHeld} years` : ''}, building ${formatCurrency(equity)} in equity.${prospect.last_sale_price ? ` They purchased for ${formatCurrency(prospect.last_sale_price)}` : ''}${prospect.assessed_value ? ` and their home is now worth approximately ${formatCurrency(prospect.assessed_value)}` : ''}. Without help, they could lose everything they've built.`;
-    interventionWindow = 'Mid stage — DMP is still viable but the window is narrowing. Proactive outreach recommended.';
-    suggestedService = 'Debt Management Program (DMP)';
-  } else {
-    explanation = `The ${ownerLast} family is showing early signs of financial hardship with ${signalCount} distress indicator(s). They have ${formatCurrency(equity)} in home equity worth protecting. Early outreach from ACCC could help them stabilize before the situation escalates.`;
-    interventionWindow = 'Early stage — DMP is viable and the family has time to course-correct with support.';
-    suggestedService = prospect.has_probate ? 'Housing Counseling' : 'Debt Management Program (DMP)';
-  }
+  const formattedName = formatOwnerName(prospect.owner_name);
+  const suggestedService = getSuggestedService(prospect);
 
   return (
     <div>
@@ -321,9 +420,9 @@ export default function ProspectDetailPage({
             <h1 className="text-lg font-bold text-beacon-text">
               {prospect.address}, {prospect.city} {prospect.state} {prospect.zip}
             </h1>
-            <p className="text-sm text-beacon-text-secondary mt-1">{prospect.owner_name}</p>
+            <p className="text-sm text-beacon-text-secondary mt-1">{formattedName}</p>
             <p className="text-xs text-beacon-text-muted mt-0.5">
-              {prospect.last_sale_date ? `Owned since ${prospect.last_sale_date.slice(0, 4)}` : 'Ownership date unknown'}{prospect.years_held ? ` (${prospect.years_held} years)` : ''}
+              {prospect.last_sale_date ? `Owned since ${prospect.last_sale_date.slice(0, 4)}` : 'Ownership date unknown'}{prospect.years_held ? ` (${Math.round(prospect.years_held)} years)` : ''}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -359,6 +458,16 @@ export default function ProspectDetailPage({
         </div>
       </div>
 
+      {/* Street View */}
+      {process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY && (
+        <StreetView
+          address={prospect.address}
+          city={prospect.city}
+          state={prospect.state}
+          zip={prospect.zip}
+        />
+      )}
+
       {/* Property details + Signal summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Property details */}
@@ -374,7 +483,7 @@ export default function ProspectDetailPage({
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Equity at Stake</p>
-              <p className="text-lg font-bold text-emerald-600 mt-0.5">{formatCurrency(prospect.estimated_equity)}</p>
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(prospect.estimated_equity)}</p>
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Last Sale</p>
@@ -383,7 +492,7 @@ export default function ProspectDetailPage({
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Years Held</p>
-              <p className="text-sm font-medium text-beacon-text mt-0.5">{prospect.years_held ? `${prospect.years_held} years` : '—'}</p>
+              <p className="text-sm font-medium text-beacon-text mt-0.5">{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">County</p>
@@ -474,21 +583,78 @@ export default function ProspectDetailPage({
         </div>
       </div>
 
-      {/* What does this family need */}
-      <div className="bg-beacon-primary-muted/50 rounded-xl border border-beacon-primary/10 p-5 mb-6">
-        <h2 className="text-sm font-semibold text-beacon-primary-dark mb-2 flex items-center gap-2">
-          <FileText size={15} />
-          What Does This Family Need?
+      {/* Household Intelligence Summary */}
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
+        <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
+          <FileText size={15} className="text-beacon-primary" />
+          Household Intelligence Summary
         </h2>
-        <p className="text-sm text-beacon-text-secondary leading-relaxed mb-4">{explanation}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-beacon-surface/60 rounded-lg p-3">
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Intervention Window</p>
-            <p className="text-xs text-beacon-text-secondary leading-relaxed">{interventionWindow}</p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Distress Signals */}
+          <div>
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-2">Distress Signals</p>
+            <div className="space-y-1.5">
+              {events.map((event) => {
+                const sevDef = SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.info;
+                const signalLabel = SIGNAL_COLORS[event.signal_type as keyof typeof SIGNAL_COLORS]?.label || event.signal_type;
+                return (
+                  <div key={event.id} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', sevDef.bg, sevDef.text)}>
+                        {event.severity}
+                      </span>
+                      <span className="text-beacon-text">{signalLabel}</span>
+                    </div>
+                    <span className="text-beacon-text-muted text-[11px] tabular-nums">{event.detected_date}</span>
+                  </div>
+                );
+              })}
+              {events.length === 0 && (
+                <p className="text-xs text-beacon-text-muted">No signals detected.</p>
+              )}
+            </div>
           </div>
-          <div className="bg-beacon-surface/60 rounded-lg p-3">
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Suggested Service</p>
-            <p className="text-sm font-semibold text-beacon-primary-dark">{suggestedService}</p>
+
+          {/* Equity Position */}
+          <div>
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-2">Equity Position</p>
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-beacon-text-muted">Assessed Value</p>
+                <p className="text-sm font-semibold text-beacon-text">{formatCurrency(prospect.assessed_value)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-beacon-text-muted">Estimated Equity</p>
+                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(prospect.estimated_equity)}</p>
+              </div>
+              {prospect.last_sale_price > 0 && (
+                <div>
+                  <p className="text-xs text-beacon-text-muted">Last Sale</p>
+                  <p className="text-sm font-medium text-beacon-text">{formatCurrency(prospect.last_sale_price)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Hardship Timeline + Service */}
+          <div>
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-2">Hardship Timeline</p>
+            <div className="space-y-1">
+              {events.map((event) => (
+                <div key={event.id} className="flex items-center gap-2 text-xs">
+                  <span className="text-beacon-text-muted tabular-nums text-[11px]">{event.detected_date}</span>
+                  <span className="text-beacon-text">{EVENT_ICONS[event.signal_type] || '📌'} {SIGNAL_COLORS[event.signal_type as keyof typeof SIGNAL_COLORS]?.label || event.signal_type}</span>
+                </div>
+              ))}
+              {prospect.distress_months && prospect.distress_months > 0 && (
+                <p className="text-[10px] text-beacon-text-muted mt-1">{prospect.distress_months} months in distress</p>
+              )}
+            </div>
+            <div className="mt-3 pt-3 border-t border-beacon-border">
+              <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Service Category</p>
+              <p className="text-sm font-semibold text-beacon-primary-dark">{suggestedService}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -498,7 +664,7 @@ export default function ProspectDetailPage({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-beacon-text flex items-center gap-2">
             <Phone size={15} className="text-beacon-primary" />
-            Reach Out to Offer Help
+            Contact Information
           </h2>
           <div className="flex items-center gap-2">
             {/* First lookup button — never looked up before */}
@@ -529,7 +695,7 @@ export default function ProspectDetailPage({
         {/* ── Idle state (never looked up) ── */}
         {!contactFetched && !contactLoading && (
           <p className="text-xs text-beacon-text-muted">
-            Click &ldquo;Look Up Contact&rdquo; to search public records for contact information.
+            Contact lookup available
           </p>
         )}
 
@@ -571,7 +737,7 @@ export default function ProspectDetailPage({
                   <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
                 )}
                 <span className={cn('text-xs', contactStep >= 2 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
-                  Searching for {prospect.owner_name} at {prospect.address}
+                  Searching for {formattedName} at {prospect.address}
                 </span>
               </div>
 
@@ -608,7 +774,7 @@ export default function ProspectDetailPage({
 
         {/* ── Error state ── */}
         {!contactLoading && contactError && (
-          <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
+          <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/50">
             <XCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-medium text-red-700">{contactError}</p>
@@ -629,7 +795,7 @@ export default function ProspectDetailPage({
               {/* ── Found contact info ── */}
               {hasAnyContact && (
                 <>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border bg-emerald-50 border-emerald-100">
+                  <div className="flex items-start gap-3 p-3 rounded-lg border bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/50">
                     <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-medium text-emerald-700">
@@ -688,7 +854,7 @@ export default function ProspectDetailPage({
 
               {/* ── No results found ── */}
               {!hasAnyContact && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 border-slate-200">
+                <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
                   <ShieldCheck size={15} className="text-slate-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-xs font-medium text-slate-600">
@@ -701,13 +867,13 @@ export default function ProspectDetailPage({
                       </p>
                     )}
                     <p className="text-[10px] mt-1.5 text-slate-400 leading-relaxed">
-                      No phone, email, or mailing records were found for &ldquo;{prospect.owner_name}&rdquo; at {prospect.address}, {prospect.city} {prospect.state}.
+                      No phone, email, or mailing records were found for &ldquo;{formattedName}&rdquo; at {prospect.address}, {prospect.city} {prospect.state}.
                       This is common for individuals with unlisted numbers, newer addresses, or properties held under entity names.
                     </p>
 
                     {/* Cooldown info */}
                     {savedRecord && !canRequery && daysUntilRequery > 0 && (
-                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
+                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                         <RefreshCw size={10} className="text-slate-400" />
                         <p className="text-[10px] text-slate-400">
                           Eligible for re-lookup in {daysUntilRequery} day{daysUntilRequery !== 1 ? 's' : ''}.
@@ -716,7 +882,7 @@ export default function ProspectDetailPage({
                       </div>
                     )}
                     {savedRecord && canRequery && (
-                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
+                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                         <RefreshCw size={10} className="text-blue-500" />
                         <p className="text-[10px] text-blue-600">
                           Eligible for re-lookup — click &ldquo;Search Again&rdquo; above to check for new records.
@@ -731,7 +897,7 @@ export default function ProspectDetailPage({
               <div className="flex items-start gap-2 pt-2 border-t border-beacon-border">
                 <Database size={12} className="text-beacon-text-muted flex-shrink-0 mt-0.5" />
                 <p className="text-[10px] text-beacon-text-muted leading-relaxed">
-                  Searched public phone, email, and mailing records for <span className="font-medium">{prospect.owner_name}</span> associated
+                  Searched public phone, email, and mailing records for <span className="font-medium">{formattedName}</span> associated
                   with <span className="font-medium">{prospect.address}, {prospect.city} {prospect.state} {prospect.zip}</span>.
                 </p>
               </div>
@@ -739,16 +905,6 @@ export default function ProspectDetailPage({
           );
         })()}
 
-        {/* Suggested outreach script */}
-        <div className="mt-4 p-3 bg-beacon-surface-alt rounded-lg border border-beacon-border">
-          <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1.5">Suggested Outreach Script</p>
-          <p className="text-xs text-beacon-text-secondary leading-relaxed italic">
-            &ldquo;Hi, my name is [your name] from American Consumer Credit Counseling.
-            We work with families in your area who are navigating financial challenges
-            and I wanted to reach out to see if we could be of any help. Our services
-            are free and confidential — would you have a few minutes to talk?&rdquo;
-          </p>
-        </div>
       </div>
 
       {/* Counselor notes + status */}

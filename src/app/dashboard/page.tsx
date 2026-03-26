@@ -91,10 +91,10 @@ function getActivityIcon(type: string) {
 
 function getActivityColor(type: string) {
   switch (type) {
-    case 'status_change': return 'bg-blue-100 text-blue-600';
-    case 'note_added': return 'bg-slate-100 text-slate-600';
-    case 'new_prospect': return 'bg-red-100 text-red-600';
-    default: return 'bg-slate-100 text-slate-600';
+    case 'status_change': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
+    case 'note_added': return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+    case 'new_prospect': return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
+    default: return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
   }
 }
 
@@ -128,10 +128,10 @@ export default function DashboardPage() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-beacon-text">
           {greeting}
         </h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-beacon-text-secondary mt-1">
           Here&apos;s who may need help in your community today.
         </p>
       </div>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
           <div
             key={stat.label}
             className={cn(
-              'bg-white rounded-xl border border-beacon-border p-5 opacity-0',
+              'bg-beacon-surface rounded-xl border border-beacon-border p-5 opacity-0',
               mounted && 'animate-fade-in-up',
               mounted && `stagger-${i + 1}`
             )}
@@ -170,7 +170,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Activity feed */}
-        <div className="xl:col-span-2 bg-white rounded-xl border border-beacon-border">
+        <div className="xl:col-span-2 bg-beacon-surface rounded-xl border border-beacon-border">
           <div className="px-5 py-4 border-b border-beacon-border flex items-center justify-between">
             <h2 className="text-sm font-semibold text-beacon-text">Recent Activity</h2>
             <span className="text-xs text-beacon-text-muted">Last 24 hours</span>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
 
         {/* Quick access */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-beacon-border p-5">
+          <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
             <h2 className="text-sm font-semibold text-beacon-text mb-4">Quick Access</h2>
             <div className="space-y-2.5">
               <Link
@@ -220,12 +220,12 @@ export default function DashboardPage() {
                 href="/dashboard/markets"
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-beacon-surface-alt transition-colors group"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <MapPin size={16} className="text-blue-600" />
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                  <MapPin size={16} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-beacon-text">Community Map</p>
-                  <p className="text-xs text-beacon-text-muted">Where people need help most</p>
+                  <p className="text-sm font-medium text-beacon-text">Coverage</p>
+                  <p className="text-xs text-beacon-text-muted">Where Beacon is working — and where it isn&apos;t yet</p>
                 </div>
                 <ArrowRight size={14} className="text-beacon-text-muted group-hover:text-beacon-text transition-colors" />
               </Link>
@@ -234,8 +234,8 @@ export default function DashboardPage() {
                 href="/dashboard/prospects?assigned=me"
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-beacon-surface-alt transition-colors group"
               >
-                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <ClipboardList size={16} className="text-amber-600" />
+                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                  <ClipboardList size={16} className="text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-beacon-text">My Assignments</p>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Distress summary */}
-          <div className="bg-white rounded-xl border border-beacon-border p-5">
+          <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
             <h2 className="text-sm font-semibold text-beacon-text mb-3">Distress Indicators</h2>
             <div className="space-y-2.5">
               {[

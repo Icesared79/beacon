@@ -42,7 +42,7 @@ export default function MarketingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
         {/* Pitch Deck */}
-        <div className="bg-white rounded-xl border border-beacon-border p-6">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-6">
           <div className="w-12 h-12 rounded-xl bg-beacon-primary-muted flex items-center justify-center mb-4">
             <Presentation size={22} className="text-beacon-primary" />
           </div>
@@ -54,7 +54,7 @@ export default function MarketingPage() {
             onClick={handleDownloadDeck}
             disabled={generatingDeck}
             className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-60"
-            style={{ backgroundColor: '#1B5EA8' }}
+            style={{ backgroundColor: 'var(--beacon-primary)' }}
           >
             {generatingDeck ? (
               <Loader2 size={16} className="animate-spin" />
@@ -66,7 +66,7 @@ export default function MarketingPage() {
         </div>
 
         {/* One-Pager */}
-        <div className="bg-white rounded-xl border border-beacon-border p-6">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-6">
           <div className="w-12 h-12 rounded-xl bg-beacon-accent-light flex items-center justify-center mb-4">
             <FileText size={22} className="text-beacon-accent" />
           </div>
