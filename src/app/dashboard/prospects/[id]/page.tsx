@@ -31,16 +31,6 @@ import type { Prospect } from '@/lib/prospect-helpers';
 import { cn, formatCurrency, getScoreColor, getScoreLabel, formatOwnerName } from '@/lib/utils';
 import { StreetView } from '@/components/StreetView';
 
-const EVENT_ICONS: Record<string, string> = {
-  tax_delinquency: '💰',
-  lis_pendens: '⚖️',
-  llc_dissolved: '🏢',
-  long_hold: '📅',
-  high_equity: '📈',
-  bankruptcy: '📋',
-  probate: '📜',
-};
-
 // ─── Contact lookup persistence ───
 interface ContactRecord {
   attemptedAt: string; // ISO timestamp
@@ -547,66 +537,31 @@ export default function ProspectDetailPage({
         </div>
       </div>
 
-      {/* Timeline event list */}
+      {/* ── Unified Intelligence Panel ── */}
       <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
-        <h2 className="text-sm font-semibold text-beacon-text mb-4">Hardship Timeline</h2>
-        <div className="relative">
-          {/* Timeline line */}
-          <div className="absolute left-4 top-2 bottom-2 w-px bg-beacon-border" />
-
-          <div className="space-y-4">
-            {events.map((event) => {
-              const sevDef = SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.info;
-              return (
-                <div key={event.id} className="flex items-start gap-4 pl-1">
-                  <div className="relative z-10 w-7 h-7 rounded-full bg-beacon-surface border-2 border-beacon-border flex items-center justify-center text-sm flex-shrink-0">
-                    {EVENT_ICONS[event.signal_type] || '📌'}
-                  </div>
-                  <div className="flex-1 pb-1">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-bold text-beacon-text">{event.detected_date}</span>
-                      <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', sevDef.bg, sevDef.text)}>
-                        {event.severity}
-                      </span>
-                    </div>
-                    <p className="text-sm text-beacon-text-secondary">{event.description}</p>
-                    {event.amount && (
-                      <p className="text-xs text-beacon-text-muted mt-0.5">
-                        Amount: {formatCurrency(event.amount)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Household Intelligence Summary */}
-      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
-        <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
-          <FileText size={15} className="text-beacon-primary" />
-          Household Intelligence Summary
-        </h2>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Distress Signals */}
-          <div>
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-2">Distress Signals</p>
-            <div className="space-y-1.5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+          {/* Left — Hardship Timeline */}
+          <div className="lg:border-r lg:border-beacon-border lg:pr-5 pb-5 lg:pb-0">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-3">Hardship Timeline</p>
+            <div className="space-y-3">
               {events.map((event) => {
                 const sevDef = SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.info;
                 const signalLabel = SIGNAL_COLORS[event.signal_type as keyof typeof SIGNAL_COLORS]?.label || event.signal_type;
                 return (
-                  <div key={event.id} className="flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
+                  <div key={event.id}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-bold text-beacon-text tabular-nums">{event.detected_date}</span>
                       <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', sevDef.bg, sevDef.text)}>
                         {event.severity}
                       </span>
-                      <span className="text-beacon-text">{signalLabel}</span>
                     </div>
-                    <span className="text-beacon-text-muted text-[11px] tabular-nums">{event.detected_date}</span>
+                    <p className="text-xs font-medium text-beacon-text">{signalLabel}</p>
+                    <p className="text-xs text-beacon-text-secondary">{event.description}</p>
+                    {event.amount && (
+                      <p className="text-[11px] text-beacon-text-muted mt-0.5">
+                        Amount: {formatCurrency(event.amount)}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -614,297 +569,192 @@ export default function ProspectDetailPage({
                 <p className="text-xs text-beacon-text-muted">No signals detected.</p>
               )}
             </div>
+            {prospect.distress_months && prospect.distress_months > 0 && (
+              <p className="text-[10px] text-beacon-text-muted mt-3 pt-3 border-t border-beacon-border">
+                {prospect.distress_months} months in distress
+              </p>
+            )}
           </div>
 
-          {/* Equity Position */}
-          <div>
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-2">Equity Position</p>
-            <div className="space-y-2">
+          {/* Middle — Equity Position */}
+          <div className="lg:border-r lg:border-beacon-border lg:px-5 border-t lg:border-t-0 border-beacon-border pt-5 lg:pt-0 pb-5 lg:pb-0">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-3">Equity Position</p>
+            <div className="space-y-3">
               <div>
                 <p className="text-xs text-beacon-text-muted">Assessed Value</p>
                 <p className="text-sm font-semibold text-beacon-text">{formatCurrency(prospect.assessed_value)}</p>
               </div>
               <div>
                 <p className="text-xs text-beacon-text-muted">Estimated Equity</p>
-                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(prospect.estimated_equity)}</p>
+                <p className={cn('text-sm font-semibold', prospect.estimated_equity > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-beacon-text-muted')}>
+                  {prospect.estimated_equity > 0 ? formatCurrency(prospect.estimated_equity) : 'Unavailable'}
+                </p>
               </div>
               {prospect.last_sale_price > 0 && (
                 <div>
-                  <p className="text-xs text-beacon-text-muted">Last Sale</p>
+                  <p className="text-xs text-beacon-text-muted">Last Sale Price</p>
                   <p className="text-sm font-medium text-beacon-text">{formatCurrency(prospect.last_sale_price)}</p>
                 </div>
               )}
+              <div>
+                <p className="text-xs text-beacon-text-muted">Years in Property</p>
+                <p className="text-sm font-medium text-beacon-text">{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-beacon-text-muted">County</p>
+                <p className="text-sm font-medium text-beacon-text">{prospect.county || '—'}</p>
+              </div>
             </div>
           </div>
 
-          {/* Hardship Timeline + Service */}
-          <div>
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-2">Hardship Timeline</p>
-            <div className="space-y-1">
-              {events.map((event) => (
-                <div key={event.id} className="flex items-center gap-2 text-xs">
-                  <span className="text-beacon-text-muted tabular-nums text-[11px]">{event.detected_date}</span>
-                  <span className="text-beacon-text">{EVENT_ICONS[event.signal_type] || '📌'} {SIGNAL_COLORS[event.signal_type as keyof typeof SIGNAL_COLORS]?.label || event.signal_type}</span>
-                </div>
-              ))}
-              {prospect.distress_months && prospect.distress_months > 0 && (
-                <p className="text-[10px] text-beacon-text-muted mt-1">{prospect.distress_months} months in distress</p>
+          {/* Right — Action Intelligence */}
+          <div className="lg:pl-5 border-t lg:border-t-0 border-beacon-border pt-5 lg:pt-0">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-3">Action Intelligence</p>
+
+            {/* Service Category */}
+            <div className="mb-4">
+              <p className="text-xs text-beacon-text-muted mb-0.5">Service Category</p>
+              <p className="text-sm font-bold text-beacon-text">{suggestedService}</p>
+            </div>
+
+            {/* Contact Information */}
+            <div className="pt-3 border-t border-beacon-border">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-beacon-text-muted">Contact Information</p>
+                {!contactFetched && !contactLoading && (
+                  <button
+                    onClick={fetchContact}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                    style={{ backgroundColor: 'var(--beacon-primary)' }}
+                  >
+                    <Search size={12} />
+                    Look Up Contact
+                  </button>
+                )}
+                {contactFetched && !contactLoading && savedRecord && !savedRecord.found && canRequery && (
+                  <button
+                    onClick={fetchContact}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                    style={{ backgroundColor: 'var(--beacon-primary)' }}
+                  >
+                    <RefreshCw size={12} />
+                    Search Again
+                  </button>
+                )}
+              </div>
+
+              {/* Idle */}
+              {!contactFetched && !contactLoading && (
+                <p className="text-xs text-beacon-text-muted">Contact lookup available</p>
               )}
-            </div>
-            <div className="mt-3 pt-3 border-t border-beacon-border">
-              <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-1">Service Category</p>
-              <p className="text-sm font-semibold text-beacon-primary-dark">{suggestedService}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Contact Information — Tracerfy skip trace */}
-      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-beacon-text flex items-center gap-2">
-            <Phone size={15} className="text-beacon-primary" />
-            Contact Information
-          </h2>
-          <div className="flex items-center gap-2">
-            {/* First lookup button — never looked up before */}
-            {!contactFetched && !contactLoading && (
-              <button
-                onClick={fetchContact}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
-                style={{ backgroundColor: 'var(--beacon-primary)' }}
-              >
-                <Search size={13} />
-                Look Up Contact
-              </button>
-            )}
-            {/* Re-lookup button — previous lookup had no results and cooldown has passed */}
-            {contactFetched && !contactLoading && savedRecord && !savedRecord.found && canRequery && (
-              <button
-                onClick={fetchContact}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
-                style={{ backgroundColor: 'var(--beacon-primary)' }}
-              >
-                <RefreshCw size={12} />
-                Search Again
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ── Idle state (never looked up) ── */}
-        {!contactFetched && !contactLoading && (
-          <p className="text-xs text-beacon-text-muted">
-            Contact lookup available
-          </p>
-        )}
-
-        {/* ── Loading state — step-by-step progress ── */}
-        {contactLoading && (
-          <div className="space-y-4">
-            {/* Progress bar */}
-            <div className="w-full h-1.5 bg-beacon-surface-alt rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{
-                  width: `${contactProgress}%`,
-                  backgroundColor: 'var(--beacon-primary)',
-                }}
-              />
-            </div>
-
-            {/* Step indicators */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-3">
-                {contactStep > 1 ? (
-                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
-                ) : contactStep === 1 ? (
-                  <Loader2 size={15} className="text-blue-500 animate-spin flex-shrink-0" />
-                ) : (
-                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
-                )}
-                <span className={cn('text-xs', contactStep >= 1 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
-                  Connecting to skip trace service
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {contactStep > 2 ? (
-                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
-                ) : contactStep === 2 ? (
-                  <Loader2 size={15} className="text-blue-500 animate-spin flex-shrink-0" />
-                ) : (
-                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
-                )}
-                <span className={cn('text-xs', contactStep >= 2 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
-                  Searching for {formattedName} at {prospect.address}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {contactStep > 3 ? (
-                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
-                ) : contactStep === 3 ? (
-                  <Loader2 size={15} className="text-blue-500 animate-spin flex-shrink-0" />
-                ) : (
-                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
-                )}
-                <span className={cn('text-xs', contactStep >= 3 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
-                  Cross-referencing public records
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {contactStep >= 4 ? (
-                  <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0" />
-                ) : (
-                  <div className="w-[15px] h-[15px] rounded-full border-2 border-beacon-border flex-shrink-0" />
-                )}
-                <span className={cn('text-xs', contactStep >= 4 ? 'text-beacon-text' : 'text-beacon-text-muted')}>
-                  Processing results
-                </span>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-beacon-text-muted leading-relaxed mt-2">
-              Searching phone, email, and mailing records. This usually takes a few seconds.
-            </p>
-          </div>
-        )}
-
-        {/* ── Error state ── */}
-        {!contactLoading && contactError && (
-          <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/50">
-            <XCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-medium text-red-700">{contactError}</p>
-              <p className="text-[10px] text-red-500 mt-1">This may be a temporary issue. Try again in a few minutes.</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Results state ── */}
-        {contactFetched && !contactLoading && contactInfo && (() => {
-          const hasPhones = contactInfo.phones && contactInfo.phones.length > 0;
-          const hasEmails = contactInfo.emails && contactInfo.emails.length > 0;
-          const hasMailingAddr = !!contactInfo.mailingAddress;
-          const hasAnyContact = hasPhones || hasEmails || hasMailingAddr;
-
-          return (
-            <div className="space-y-4">
-              {/* ── Found contact info ── */}
-              {hasAnyContact && (
-                <>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/50">
-                    <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-medium text-emerald-700">
-                        Contact information found
-                      </p>
-                      <p className="text-[10px] mt-0.5 text-emerald-600">
-                        Found {contactInfo.phones.length} phone{contactInfo.phones.length !== 1 ? 's' : ''}, {contactInfo.emails.length} email{contactInfo.emails.length !== 1 ? 's' : ''}{hasMailingAddr ? ', 1 mailing address' : ''}
-                      </p>
-                      {savedRecord && (
-                        <p className="text-[10px] mt-1 text-emerald-500 flex items-center gap-1">
-                          <CalendarClock size={10} />
-                          Looked up {formatLookupDate(savedRecord.attemptedAt)}
-                        </p>
-                      )}
-                    </div>
+              {/* Loading */}
+              {contactLoading && (
+                <div className="space-y-3">
+                  <div className="w-full h-1.5 bg-beacon-surface-alt rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${contactProgress}%`, backgroundColor: 'var(--beacon-primary)' }}
+                    />
                   </div>
+                  <div className="space-y-2">
+                    {[
+                      { step: 1, label: 'Connecting to skip trace service' },
+                      { step: 2, label: `Searching for ${formattedName}` },
+                      { step: 3, label: 'Cross-referencing records' },
+                      { step: 4, label: 'Processing results' },
+                    ].map(({ step, label }) => (
+                      <div key={step} className="flex items-center gap-2">
+                        {contactStep > step ? (
+                          <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
+                        ) : contactStep === step ? (
+                          <Loader2 size={13} className="text-blue-500 animate-spin flex-shrink-0" />
+                        ) : (
+                          <div className="w-[13px] h-[13px] rounded-full border-2 border-beacon-border flex-shrink-0" />
+                        )}
+                        <span className={cn('text-[11px]', contactStep >= step ? 'text-beacon-text' : 'text-beacon-text-muted')}>
+                          {label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
+              {/* Error */}
+              {!contactLoading && contactError && (
+                <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/50">
+                  <XCircle size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[11px] font-medium text-red-700">{contactError}</p>
+                    <p className="text-[10px] text-red-500 mt-0.5">Try again in a few minutes.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Results */}
+              {contactFetched && !contactLoading && contactInfo && (() => {
+                const hasPhones = contactInfo.phones && contactInfo.phones.length > 0;
+                const hasEmails = contactInfo.emails && contactInfo.emails.length > 0;
+                const hasMailingAddr = !!contactInfo.mailingAddress;
+                const hasAnyContact = hasPhones || hasEmails || hasMailingAddr;
+
+                return (
                   <div className="space-y-2.5">
-                    {hasPhones && contactInfo.phones.map((phone, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <Phone size={14} className="text-beacon-text-muted flex-shrink-0" />
-                        <a
-                          href={`tel:${phone.number}`}
-                          className="text-sm text-beacon-primary hover:underline"
-                        >
-                          {phone.number}
-                        </a>
-                        <span className="text-[10px] text-beacon-text-muted uppercase tracking-wider">
-                          {phone.type}
-                        </span>
-                      </div>
-                    ))}
-                    {hasEmails && contactInfo.emails.map((email, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <Mail size={14} className="text-beacon-text-muted flex-shrink-0" />
-                        <a
-                          href={`mailto:${email}`}
-                          className="text-sm text-beacon-primary hover:underline"
-                        >
-                          {email}
-                        </a>
-                      </div>
-                    ))}
-                    {hasMailingAddr && contactInfo.mailingAddress && (
-                      <div className="flex items-center gap-3">
-                        <MapPin size={14} className="text-beacon-text-muted flex-shrink-0" />
-                        <span className="text-sm text-beacon-text-secondary">
-                          {contactInfo.mailingAddress.street}, {contactInfo.mailingAddress.city}{' '}
-                          {contactInfo.mailingAddress.state} {contactInfo.mailingAddress.zip}
-                        </span>
+                    {hasAnyContact && (
+                      <>
+                        {hasPhones && contactInfo.phones.map((phone, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <Phone size={13} className="text-beacon-text-muted flex-shrink-0" />
+                            <a href={`tel:${phone.number}`} className="text-xs text-beacon-primary hover:underline">{phone.number}</a>
+                            <span className="text-[10px] text-beacon-text-muted uppercase">{phone.type}</span>
+                          </div>
+                        ))}
+                        {hasEmails && contactInfo.emails.map((email, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <Mail size={13} className="text-beacon-text-muted flex-shrink-0" />
+                            <a href={`mailto:${email}`} className="text-xs text-beacon-primary hover:underline">{email}</a>
+                          </div>
+                        ))}
+                        {hasMailingAddr && contactInfo.mailingAddress && (
+                          <div className="flex items-center gap-2">
+                            <MapPin size={13} className="text-beacon-text-muted flex-shrink-0" />
+                            <span className="text-xs text-beacon-text-secondary">
+                              {contactInfo.mailingAddress.street}, {contactInfo.mailingAddress.city}{' '}
+                              {contactInfo.mailingAddress.state} {contactInfo.mailingAddress.zip}
+                            </span>
+                          </div>
+                        )}
+                        {savedRecord && (
+                          <p className="text-[10px] text-beacon-text-muted flex items-center gap-1 mt-1">
+                            <CalendarClock size={10} />
+                            Looked up {formatLookupDate(savedRecord.attemptedAt)}
+                          </p>
+                        )}
+                      </>
+                    )}
+                    {!hasAnyContact && (
+                      <div>
+                        <p className="text-xs text-beacon-text-muted">No contact records found.</p>
+                        {savedRecord && (
+                          <p className="text-[10px] text-beacon-text-muted flex items-center gap-1 mt-1">
+                            <CalendarClock size={10} />
+                            Searched {formatLookupDate(savedRecord.attemptedAt)}
+                          </p>
+                        )}
+                        {savedRecord && !canRequery && daysUntilRequery > 0 && (
+                          <p className="text-[10px] text-beacon-text-muted mt-1">
+                            Re-lookup eligible in {daysUntilRequery} day{daysUntilRequery !== 1 ? 's' : ''}.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
-                </>
-              )}
-
-              {/* ── No results found ── */}
-              {!hasAnyContact && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
-                  <ShieldCheck size={15} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-slate-600">
-                      Search completed — no contact records available
-                    </p>
-                    {savedRecord && (
-                      <p className="text-[10px] mt-1 text-slate-500 flex items-center gap-1">
-                        <CalendarClock size={10} />
-                        Searched {formatLookupDate(savedRecord.attemptedAt)}
-                      </p>
-                    )}
-                    <p className="text-[10px] mt-1.5 text-slate-400 leading-relaxed">
-                      No phone, email, or mailing records were found for &ldquo;{formattedName}&rdquo; at {prospect.address}, {prospect.city} {prospect.state}.
-                      This is common for individuals with unlisted numbers, newer addresses, or properties held under entity names.
-                    </p>
-
-                    {/* Cooldown info */}
-                    {savedRecord && !canRequery && daysUntilRequery > 0 && (
-                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <RefreshCw size={10} className="text-slate-400" />
-                        <p className="text-[10px] text-slate-400">
-                          Eligible for re-lookup in {daysUntilRequery} day{daysUntilRequery !== 1 ? 's' : ''}.
-                          Records are updated monthly — re-searching too soon uses a credit with no new data.
-                        </p>
-                      </div>
-                    )}
-                    {savedRecord && canRequery && (
-                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <RefreshCw size={10} className="text-blue-500" />
-                        <p className="text-[10px] text-blue-600">
-                          Eligible for re-lookup — click &ldquo;Search Again&rdquo; above to check for new records.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* What was searched — always shown for transparency */}
-              <div className="flex items-start gap-2 pt-2 border-t border-beacon-border">
-                <Database size={12} className="text-beacon-text-muted flex-shrink-0 mt-0.5" />
-                <p className="text-[10px] text-beacon-text-muted leading-relaxed">
-                  Searched public phone, email, and mailing records for <span className="font-medium">{formattedName}</span> associated
-                  with <span className="font-medium">{prospect.address}, {prospect.city} {prospect.state} {prospect.zip}</span>.
-                </p>
-              </div>
+                );
+              })()}
             </div>
-          );
-        })()}
-
+          </div>
+        </div>
       </div>
 
       {/* Counselor notes + status */}
