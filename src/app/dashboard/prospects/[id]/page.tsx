@@ -538,89 +538,107 @@ export default function ProspectDetailPage({
       </div>
 
       {/* ── Unified Intelligence Panel ── */}
-      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5 mb-6">
+      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-6 mb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
           {/* Left — Hardship Timeline */}
-          <div className="lg:border-r lg:border-beacon-border lg:pr-5 pb-5 lg:pb-0">
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-3">Hardship Timeline</p>
-            <div className="space-y-3">
-              {events.map((event) => {
-                const sevDef = SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.info;
-                const signalLabel = SIGNAL_COLORS[event.signal_type as keyof typeof SIGNAL_COLORS]?.label || event.signal_type;
-                return (
-                  <div key={event.id}>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-bold text-beacon-text tabular-nums">{event.detected_date}</span>
-                      <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', sevDef.bg, sevDef.text)}>
-                        {event.severity}
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium text-beacon-text">{signalLabel}</p>
-                    <p className="text-xs text-beacon-text-secondary">{event.description}</p>
-                    {event.amount && (
-                      <p className="text-[11px] text-beacon-text-muted mt-0.5">
-                        Amount: {formatCurrency(event.amount)}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-              {events.length === 0 && (
-                <p className="text-xs text-beacon-text-muted">No signals detected.</p>
+          <div className="lg:border-r lg:border-beacon-border lg:pr-6 pb-6 lg:pb-0">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-4">Hardship Timeline</p>
+            <div className="relative">
+              {/* Vertical timeline line */}
+              {events.length > 1 && (
+                <div className="absolute left-[5px] top-[10px] bottom-[10px] w-px bg-beacon-border" />
               )}
+              <div className="space-y-5">
+                {events.map((event, idx) => {
+                  const sevDef = SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.info;
+                  const signalLabel = SIGNAL_COLORS[event.signal_type as keyof typeof SIGNAL_COLORS]?.label || event.signal_type;
+                  return (
+                    <div key={event.id} className="flex gap-4">
+                      {/* Timeline dot */}
+                      <div className="relative z-10 flex-shrink-0 mt-1">
+                        <div className={cn(
+                          'w-[11px] h-[11px] rounded-full border-2',
+                          event.severity === 'critical' ? 'border-red-500 bg-red-100 dark:bg-red-900/40' :
+                          event.severity === 'high' ? 'border-amber-500 bg-amber-100 dark:bg-amber-900/40' :
+                          event.severity === 'warning' ? 'border-yellow-500 bg-yellow-100 dark:bg-yellow-900/40' :
+                          'border-blue-400 bg-blue-100 dark:bg-blue-900/40'
+                        )} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-beacon-text tabular-nums">{event.detected_date}</span>
+                          <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', sevDef.bg, sevDef.text)}>
+                            {event.severity}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-beacon-text leading-snug">{signalLabel}</p>
+                        <p className="text-xs text-beacon-text-secondary mt-0.5 leading-relaxed">{event.description}</p>
+                        {event.amount && (
+                          <p className="text-[11px] text-beacon-text-muted mt-1">
+                            Amount: {formatCurrency(event.amount)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {events.length === 0 && (
+                  <p className="text-xs text-beacon-text-muted">No signals detected.</p>
+                )}
+              </div>
             </div>
             {prospect.distress_months && prospect.distress_months > 0 && (
-              <p className="text-[10px] text-beacon-text-muted mt-3 pt-3 border-t border-beacon-border">
+              <p className="text-[11px] text-beacon-text-muted mt-4 pt-3 border-t border-beacon-border">
                 {prospect.distress_months} months in distress
               </p>
             )}
           </div>
 
           {/* Middle — Equity Position */}
-          <div className="lg:border-r lg:border-beacon-border lg:px-5 border-t lg:border-t-0 border-beacon-border pt-5 lg:pt-0 pb-5 lg:pb-0">
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-3">Equity Position</p>
-            <div className="space-y-3">
+          <div className="lg:border-r lg:border-beacon-border lg:px-6 border-t lg:border-t-0 border-beacon-border pt-6 lg:pt-0 pb-6 lg:pb-0">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-4">Equity Position</p>
+            <div className="space-y-4">
               <div>
                 <p className="text-xs text-beacon-text-muted">Assessed Value</p>
-                <p className="text-sm font-semibold text-beacon-text">{formatCurrency(prospect.assessed_value)}</p>
+                <p className="text-lg font-bold text-beacon-text mt-0.5">{formatCurrency(prospect.assessed_value)}</p>
               </div>
               <div>
                 <p className="text-xs text-beacon-text-muted">Estimated Equity</p>
-                <p className={cn('text-sm font-semibold', prospect.estimated_equity > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-beacon-text-muted')}>
+                <p className={cn('text-lg font-bold mt-0.5', prospect.estimated_equity > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-beacon-text-muted')}>
                   {prospect.estimated_equity > 0 ? formatCurrency(prospect.estimated_equity) : 'Unavailable'}
                 </p>
               </div>
               {prospect.last_sale_price > 0 && (
                 <div>
                   <p className="text-xs text-beacon-text-muted">Last Sale Price</p>
-                  <p className="text-sm font-medium text-beacon-text">{formatCurrency(prospect.last_sale_price)}</p>
+                  <p className="text-sm font-semibold text-beacon-text mt-0.5">{formatCurrency(prospect.last_sale_price)}</p>
                 </div>
               )}
               <div>
                 <p className="text-xs text-beacon-text-muted">Years in Property</p>
-                <p className="text-sm font-medium text-beacon-text">{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>
+                <p className="text-sm font-semibold text-beacon-text mt-0.5">{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>
               </div>
               <div>
                 <p className="text-xs text-beacon-text-muted">County</p>
-                <p className="text-sm font-medium text-beacon-text">{prospect.county || '—'}</p>
+                <p className="text-sm font-semibold text-beacon-text mt-0.5">{prospect.county || '—'}</p>
               </div>
             </div>
           </div>
 
           {/* Right — Action Intelligence */}
-          <div className="lg:pl-5 border-t lg:border-t-0 border-beacon-border pt-5 lg:pt-0">
-            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-3">Action Intelligence</p>
+          <div className="lg:pl-6 border-t lg:border-t-0 border-beacon-border pt-6 lg:pt-0">
+            <p className="text-[10px] font-bold text-beacon-text-muted uppercase tracking-wider mb-4">Action Intelligence</p>
 
             {/* Service Category */}
-            <div className="mb-4">
-              <p className="text-xs text-beacon-text-muted mb-0.5">Service Category</p>
-              <p className="text-sm font-bold text-beacon-text">{suggestedService}</p>
+            <div className="mb-5">
+              <p className="text-xs text-beacon-text-muted mb-1">Service Category</p>
+              <p className="text-base font-bold text-beacon-text">{suggestedService}</p>
             </div>
 
             {/* Contact Information */}
-            <div className="pt-3 border-t border-beacon-border">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-beacon-text-muted">Contact Information</p>
+            <div className="pt-4 border-t border-beacon-border">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-medium text-beacon-text-muted">Contact Information</p>
                 {!contactFetched && !contactLoading && (
                   <button
                     onClick={fetchContact}
