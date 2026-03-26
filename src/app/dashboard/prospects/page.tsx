@@ -2,19 +2,13 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowUpDown, ArrowDown, ArrowUp, X, Search, Loader2, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, Loader2, ChevronDown, AlertTriangle, Clock, Eye } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
-import { getSignalsForProspect, getSuggestedService, getInterventionStage } from '@/lib/prospect-helpers';
-import type { Prospect, InterventionStage } from '@/lib/prospect-helpers';
-import { cn, formatCurrency, formatNumber, getScoreLabel, formatOwnerName } from '@/lib/utils';
+import { getSignalsForProspect, hasHardDistress, getPriorityGroup, getPrimarySignal, getDaysInDistress } from '@/lib/prospect-helpers';
+import type { Prospect, PriorityGroup } from '@/lib/prospect-helpers';
+import { cn, formatCurrency, formatNumber, formatOwnerName } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
-
-const STAGE_STYLES: Record<InterventionStage, { color: string; label: string }> = {
-  Late: { color: '#DC2626', label: 'Act now' },
-  Mid: { color: '#D97706', label: 'Window narrowing' },
-  Early: { color: '#2563EB', label: 'Time to help' },
-};
 
 const EQUITY_PRESETS = [
   { label: 'Any', min: '', max: '' },
@@ -24,39 +18,69 @@ const EQUITY_PRESETS = [
   { label: 'Over $1M', min: '1000000', max: '' },
 ];
 
-interface FilterOption {
-  value: string;
-  label: string;
-}
+interface FilterOption { value: string; label: string; }
+interface IndicatorOption { key: string; label: string; }
 
-interface IndicatorOption {
-  key: string;
+const GROUP_CONFIG: Record<PriorityGroup, {
   label: string;
-}
+  description: string;
+  color: string;
+  bgLight: string;
+  bgDark: string;
+  textColor: string;
+  icon: typeof AlertTriangle;
+}> = {
+  critical: {
+    label: 'Critical',
+    description: 'Active foreclosure or lis pendens — immediate outreach',
+    color: '#DC2626',
+    bgLight: 'bg-red-50 dark:bg-red-950/30',
+    bgDark: 'bg-red-100 dark:bg-red-900/20',
+    textColor: 'text-red-700 dark:text-red-400',
+    icon: AlertTriangle,
+  },
+  high_need: {
+    label: 'High Need',
+    description: 'Tax delinquency, bankruptcy, or probate — outreach this week',
+    color: '#D97706',
+    bgLight: 'bg-amber-50 dark:bg-amber-950/30',
+    bgDark: 'bg-amber-100 dark:bg-amber-900/20',
+    textColor: 'text-amber-700 dark:text-amber-400',
+    icon: Clock,
+  },
+  monitor: {
+    label: 'Monitor',
+    description: 'Early stage signals — watch list',
+    color: '#2563EB',
+    bgLight: 'bg-blue-50 dark:bg-blue-950/30',
+    bgDark: 'bg-blue-100 dark:bg-blue-900/20',
+    textColor: 'text-blue-700 dark:text-blue-400',
+    icon: Eye,
+  },
+};
 
-type SortField = 'risk' | 'years' | 'equity';
-type SortDir = 'desc' | 'asc';
+const GROUP_ORDER: PriorityGroup[] = ['critical', 'high_need', 'monitor'];
 
 export default function ProspectsPage() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Filter options from API
   const [stateOptions, setStateOptions] = useState<FilterOption[]>([]);
   const [indicatorOptions, setIndicatorOptions] = useState<IndicatorOption[]>([]);
 
-  // Active filters
   const [stateFilter, setStateFilter] = useState('');
   const [signalFilter, setSignalFilter] = useState('');
-  const [equityPreset, setEquityPreset] = useState(0); // index into EQUITY_PRESETS
+  const [equityPreset, setEquityPreset] = useState(0);
   const [nameSearch, setNameSearch] = useState('');
 
-  const [sortField, setSortField] = useState<SortField>('risk');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [page, setPage] = useState(0);
+  // Per-group pagination
+  const [groupPages, setGroupPages] = useState<Record<PriorityGroup, number>>({
+    critical: 0,
+    high_need: 0,
+    monitor: 0,
+  });
 
-  // Load filter options once
   useEffect(() => {
     async function loadFilters() {
       try {
@@ -71,11 +95,10 @@ export default function ProspectsPage() {
     loadFilters();
   }, []);
 
-  // Fetch prospects with server-side filters
   const fetchProspects = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ pageSize: '1000' });
+      const params = new URLSearchParams({ pageSize: '2000' });
       if (stateFilter) params.set('state', stateFilter);
       if (signalFilter) params.set('signal', signalFilter);
       if (nameSearch) params.set('search', nameSearch);
@@ -96,52 +119,12 @@ export default function ProspectsPage() {
     }
   }, [stateFilter, signalFilter, nameSearch, equityPreset]);
 
-  useEffect(() => {
-    fetchProspects();
-  }, [fetchProspects]);
+  useEffect(() => { fetchProspects(); }, [fetchProspects]);
 
-  // Reset page when filters change
+  // Reset pagination when filters change
   useEffect(() => {
-    setPage(0);
+    setGroupPages({ critical: 0, high_need: 0, monitor: 0 });
   }, [stateFilter, signalFilter, nameSearch, equityPreset]);
-
-  function handleSort(field: SortField) {
-    if (sortField === field) {
-      setSortDir(sortDir === 'desc' ? 'asc' : 'desc');
-    } else {
-      setSortField(field);
-      setSortDir('desc');
-    }
-    setPage(0);
-  }
-
-  function SortIcon({ field }: { field: SortField }) {
-    if (sortField !== field) return <ArrowUpDown size={12} className="text-beacon-text-muted" />;
-    return sortDir === 'desc'
-      ? <ArrowDown size={12} className="text-beacon-primary" />
-      : <ArrowUp size={12} className="text-beacon-primary" />;
-  }
-
-  const sorted = useMemo(() => {
-    const data = [...prospects];
-    const dir = sortDir === 'desc' ? -1 : 1;
-    switch (sortField) {
-      case 'years':
-        data.sort((a, b) => dir * ((a.years_held || 0) - (b.years_held || 0)));
-        break;
-      case 'equity':
-        data.sort((a, b) => dir * ((a.estimated_equity || 0) - (b.estimated_equity || 0)));
-        break;
-      case 'risk':
-      default:
-        data.sort((a, b) => dir * (a.compound_score - b.compound_score));
-        break;
-    }
-    return data;
-  }, [prospects, sortField, sortDir]);
-
-  const pageCount = Math.ceil(sorted.length / PAGE_SIZE);
-  const pageData = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const hasFilters = stateFilter || signalFilter || nameSearch || equityPreset !== 0;
 
@@ -150,15 +133,40 @@ export default function ProspectsPage() {
     setSignalFilter('');
     setEquityPreset(0);
     setNameSearch('');
-    setPage(0);
   }
 
+  // Sort all prospects by compound_score desc, then group
+  const grouped = useMemo(() => {
+    const sorted = [...prospects].sort((a, b) => b.compound_score - a.compound_score);
+    const groups: Record<PriorityGroup, Prospect[]> = {
+      critical: [],
+      high_need: [],
+      monitor: [],
+    };
+    for (const p of sorted) {
+      groups[getPriorityGroup(p)].push(p);
+    }
+    return groups;
+  }, [prospects]);
+
+  const groupCounts = useMemo(() => ({
+    critical: grouped.critical.length,
+    high_need: grouped.high_need.length,
+    monitor: grouped.monitor.length,
+  }), [grouped]);
+
+  // Visible groups (non-empty)
+  const visibleGroups = GROUP_ORDER.filter(g => groupCounts[g] > 0);
+
   // Build subtitle
-  const subtitleParts: string[] = [];
-  subtitleParts.push(`${formatNumber(totalCount)} household${totalCount !== 1 ? 's' : ''} identified`);
-  if (stateFilter) {
-    const stateLabel = stateOptions.find((s) => s.value === stateFilter)?.label || stateFilter;
-    subtitleParts[0] += ` in ${stateLabel}`;
+  const subtitleText = `${formatNumber(totalCount)} household${totalCount !== 1 ? 's' : ''} identified`;
+  const stateLabel = stateFilter ? stateOptions.find(s => s.value === stateFilter)?.label || stateFilter : '';
+  const groupCountsText = visibleGroups.map(g =>
+    `${formatNumber(groupCounts[g])} ${GROUP_CONFIG[g].label}`
+  ).join(' · ');
+
+  function setGroupPage(group: PriorityGroup, page: number) {
+    setGroupPages(prev => ({ ...prev, [group]: page }));
   }
 
   if (loading && prospects.length === 0) {
@@ -176,9 +184,12 @@ export default function ProspectsPage() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-beacon-text tracking-tight">Households</h1>
         <p className="text-sm text-beacon-text-muted mt-1">
-          {subtitleParts[0]}
+          {subtitleText}{stateLabel ? ` in ${stateLabel}` : ''}
           {loading && <Loader2 className="inline-block ml-2 animate-spin" size={12} />}
         </p>
+        {groupCountsText && (
+          <p className="text-xs text-beacon-text-muted mt-0.5">{groupCountsText}</p>
+        )}
       </div>
 
       {/* Filter bar */}
@@ -195,16 +206,13 @@ export default function ProspectsPage() {
               className="pl-8 pr-8 py-2 w-52 border border-beacon-border rounded-lg bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
             />
             {nameSearch && (
-              <button
-                onClick={() => setNameSearch('')}
-                className="absolute right-2.5 top-2.5 text-beacon-text-muted hover:text-beacon-text"
-              >
+              <button onClick={() => setNameSearch('')} className="absolute right-2.5 top-2.5 text-beacon-text-muted hover:text-beacon-text">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          {/* State filter */}
+          {/* State */}
           <div className="relative">
             <select
               value={stateFilter}
@@ -212,14 +220,12 @@ export default function ProspectsPage() {
               className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
             >
               <option value="">All States</option>
-              {stateOptions.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
+              {stateOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
           </div>
 
-          {/* Indicator filter */}
+          {/* Indicator */}
           <div className="relative">
             <select
               value={signalFilter}
@@ -227,183 +233,195 @@ export default function ProspectsPage() {
               className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
             >
               <option value="">All Indicators</option>
-              {indicatorOptions.map((ind) => (
-                <option key={ind.key} value={ind.key}>{ind.label}</option>
-              ))}
+              {indicatorOptions.map(ind => <option key={ind.key} value={ind.key}>{ind.label}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
           </div>
 
-          {/* Equity range */}
+          {/* Equity */}
           <div className="relative">
             <select
               value={equityPreset}
               onChange={(e) => setEquityPreset(Number(e.target.value))}
               className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
             >
-              {EQUITY_PRESETS.map((preset, i) => (
-                <option key={i} value={i}>Equity: {preset.label}</option>
-              ))}
+              {EQUITY_PRESETS.map((preset, i) => <option key={i} value={i}>Equity: {preset.label}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
           </div>
 
           {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 text-xs font-medium text-beacon-text-muted hover:text-beacon-text transition-colors"
-            >
-              <X size={14} />
-              Clear all
+            <button onClick={clearFilters} className="flex items-center gap-1 text-xs font-medium text-beacon-text-muted hover:text-beacon-text transition-colors">
+              <X size={14} /> Clear all
             </button>
           )}
         </div>
       </div>
 
-      {/* Household table */}
-      <div className="bg-beacon-surface rounded-xl border border-beacon-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col className="w-[18%]" />
-              <col className="w-[7%]" />
-              <col className="w-[18%]" />
-              <col className="w-[10%]" />
-              <col className="w-[29%]" />
-              <col className="w-[14%]" />
-              <col className="w-[4%]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
-                <th className="text-left px-5 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
-                  Homeowner
-                </th>
-                <th
-                  className="text-center px-2 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider cursor-pointer select-none hover:text-beacon-text transition-colors"
-                  onClick={() => handleSort('years')}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Years
-                    <SortIcon field="years" />
-                  </span>
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
-                  Property
-                </th>
-                <th
-                  className="text-right px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider cursor-pointer select-none hover:text-beacon-text transition-colors"
-                  onClick={() => handleSort('equity')}
-                >
-                  <span className="inline-flex items-center justify-end gap-1 w-full">
-                    Equity
-                    <SortIcon field="equity" />
-                  </span>
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
-                  Distress Indicators
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-beacon-text-muted uppercase tracking-wider">
-                  Action Needed
-                </th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-beacon-border">
-              {pageData.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-beacon-text-muted">
-                    No households match the current filters.
-                  </td>
-                </tr>
-              )}
-              {pageData.map((prospect) => {
-                const signals = getSignalsForProspect(prospect);
-                const service = getSuggestedService(prospect);
-                const stage = getInterventionStage(prospect);
-                const stageStyle = STAGE_STYLES[stage];
-                return (
-                  <tr key={prospect.id} className="hover:bg-beacon-surface-alt/30 transition-colors group">
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm font-medium text-beacon-text truncate">{formatOwnerName(prospect.owner_name)}</p>
-                    </td>
-                    <td className="px-2 py-3.5 text-center">
-                      <p className="text-sm text-beacon-text tabular-nums">{prospect.years_held ? `${Math.round(prospect.years_held)}` : 'Unknown'}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <p className="text-sm text-beacon-text truncate">{prospect.address}</p>
-                      <p className="text-xs text-beacon-text-muted">{prospect.city}, {prospect.state} {prospect.zip}</p>
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.estimated_equity)}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex flex-wrap gap-1">
-                        {signals.map((s) => {
-                          const def = SIGNAL_COLORS[s as keyof typeof SIGNAL_COLORS];
-                          if (!def) return null;
-                          return (
-                            <span
-                              key={s}
-                              className={cn('inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold', def.bg, def.text)}
-                            >
-                              {def.label}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <p
-                        className="text-xs font-bold uppercase tracking-wider"
-                        style={{ color: stageStyle.color }}
-                      >
-                        {getScoreLabel(prospect.compound_score)}
-                      </p>
-                      <p className="text-xs text-beacon-text-secondary mt-0.5">{service}</p>
-                    </td>
-                    <td className="px-2 py-3.5 text-center">
-                      <Link
-                        href={`/dashboard/prospects/${prospect.id}`}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-beacon-text-muted hover:bg-beacon-primary-muted hover:text-beacon-primary transition-colors"
-                      >
-                        <ArrowRight size={15} />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Priority groups */}
+      {visibleGroups.length === 0 ? (
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-12 text-center">
+          <p className="text-sm text-beacon-text-muted">No households match your current filters</p>
         </div>
-
-        {/* Pagination */}
-        {pageCount > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-beacon-border">
-            <span className="text-xs text-beacon-text-muted">
-              Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {formatNumber(totalCount)}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="p-1.5 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-xs text-beacon-text-secondary font-medium">
-                {page + 1} / {pageCount}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                disabled={page >= pageCount - 1}
-                className="p-1.5 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="space-y-6">
+          {visibleGroups.map(groupKey => (
+            <PriorityGroupSection
+              key={groupKey}
+              groupKey={groupKey}
+              prospects={grouped[groupKey]}
+              page={groupPages[groupKey]}
+              onPageChange={(p) => setGroupPage(groupKey, p)}
+            />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+// ── Priority Group Section ──
+
+function PriorityGroupSection({
+  groupKey,
+  prospects,
+  page,
+  onPageChange,
+}: {
+  groupKey: PriorityGroup;
+  prospects: Prospect[];
+  page: number;
+  onPageChange: (page: number) => void;
+}) {
+  const config = GROUP_CONFIG[groupKey];
+  const Icon = config.icon;
+  const pageCount = Math.ceil(prospects.length / PAGE_SIZE);
+  const pageData = prospects.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  return (
+    <div className="bg-beacon-surface rounded-xl border border-beacon-border overflow-hidden">
+      {/* Group header */}
+      <div className={cn('px-5 py-3 border-b border-beacon-border flex items-center gap-3', config.bgLight)}>
+        <div className={cn('flex items-center justify-center w-7 h-7 rounded-lg', config.bgDark)}>
+          <Icon size={14} style={{ color: config.color }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={cn('text-sm font-bold', config.textColor)}>{config.label}</span>
+            <span className="text-xs text-beacon-text-muted">({formatNumber(prospects.length)})</span>
+          </div>
+          <p className="text-xs text-beacon-text-muted">{config.description}</p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
+              <th className="text-left px-5 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[18%]">Owner</th>
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[22%]">Address</th>
+              <th className="text-left px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[16%]">Primary Signal</th>
+              <th className="text-right px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[12%]">Equity</th>
+              <th className="text-right px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[10%]">In Distress</th>
+              <th className="text-center px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[10%]"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-beacon-border">
+            {pageData.map(prospect => (
+              <ProspectRow key={prospect.id} prospect={prospect} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between px-5 py-2.5 border-t border-beacon-border">
+          <span className="text-xs text-beacon-text-muted">
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, prospects.length)} of {formatNumber(prospects.length)}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onPageChange(Math.max(0, page - 1))}
+              disabled={page === 0}
+              className="p-1 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-xs text-beacon-text-secondary font-medium">{page + 1} / {pageCount}</span>
+            <button
+              onClick={() => onPageChange(Math.min(pageCount - 1, page + 1))}
+              disabled={page >= pageCount - 1}
+              className="p-1 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Individual Row ──
+
+function ProspectRow({ prospect }: { prospect: Prospect }) {
+  const primarySignal = getPrimarySignal(prospect);
+  const signalCount = getSignalsForProspect(prospect).length;
+  const days = getDaysInDistress(prospect);
+  const primaryDef = primarySignal ? SIGNAL_COLORS[primarySignal as keyof typeof SIGNAL_COLORS] : null;
+
+  return (
+    <tr className="hover:bg-beacon-surface-alt/30 transition-colors group">
+      {/* Owner name */}
+      <td className="px-5 py-3">
+        <p className="text-sm font-medium text-beacon-text truncate">{formatOwnerName(prospect.owner_name)}</p>
+      </td>
+
+      {/* Address */}
+      <td className="px-4 py-3">
+        <p className="text-sm text-beacon-text truncate">{prospect.address}</p>
+        <p className="text-xs text-beacon-text-muted">{prospect.city}, {prospect.state} {prospect.zip}</p>
+      </td>
+
+      {/* Primary signal + count */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          {primaryDef && (
+            <span className={cn('inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap', primaryDef.bg, primaryDef.text)}>
+              {primaryDef.label}
+            </span>
+          )}
+          {signalCount > 1 && (
+            <span className="text-[10px] text-beacon-text-muted whitespace-nowrap">{signalCount} signals</span>
+          )}
+        </div>
+      </td>
+
+      {/* Equity */}
+      <td className="px-4 py-3 text-right">
+        <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.assessed_value || prospect.estimated_equity)}</p>
+      </td>
+
+      {/* Days in distress */}
+      <td className="px-4 py-3 text-right">
+        {days !== null ? (
+          <p className="text-xs text-beacon-text-secondary tabular-nums">{days}d</p>
+        ) : (
+          <p className="text-xs text-beacon-text-muted">—</p>
+        )}
+      </td>
+
+      {/* Review button */}
+      <td className="px-4 py-3 text-center">
+        <Link
+          href={`/dashboard/prospects/${prospect.id}`}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-beacon-primary bg-beacon-primary-muted hover:bg-beacon-primary hover:text-white transition-colors"
+        >
+          Review
+        </Link>
+      </td>
+    </tr>
   );
 }

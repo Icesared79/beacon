@@ -61,8 +61,52 @@ export function getSuggestedService(p: Prospect): SuggestedService {
 
 export type InterventionStage = 'Early' | 'Mid' | 'Late';
 
+/** True if the prospect has at least one hard distress signal (foreclosure, tax, bankruptcy, lis pendens, probate). */
+export function hasHardDistress(p: Prospect): boolean {
+  return !!(p.has_lis_pendens || p.has_tax_delinquency || p.has_bankruptcy || p.has_probate);
+}
+
 export function getInterventionStage(p: Prospect): InterventionStage {
-  if (p.compound_score >= 80) return 'Late';
-  if (p.compound_score >= 65) return 'Mid';
+  if (!hasHardDistress(p)) return 'Early';
+  if (p.compound_score >= 70) return 'Late';
+  if (p.compound_score >= 50) return 'Mid';
   return 'Early';
+}
+
+// ── Priority queue helpers ──
+
+export type PriorityGroup = 'critical' | 'high_need' | 'monitor';
+
+export function getPriorityGroup(p: Prospect): PriorityGroup {
+  if (p.compound_score >= 70 && hasHardDistress(p)) return 'critical';
+  if (p.compound_score >= 50 && hasHardDistress(p)) return 'high_need';
+  return 'monitor';
+}
+
+/** Signal severity order — first match is the "primary" signal shown on the row. */
+const SIGNAL_SEVERITY: { key: string; flag: keyof Prospect }[] = [
+  { key: 'lis_pendens', flag: 'has_lis_pendens' },
+  { key: 'bankruptcy', flag: 'has_bankruptcy' },
+  { key: 'tax_delinquency', flag: 'has_tax_delinquency' },
+  { key: 'probate', flag: 'has_probate' },
+  { key: 'llc_dissolved', flag: 'has_dissolved_llc' },
+  { key: 'high_equity', flag: 'is_high_equity' },
+  { key: 'long_hold', flag: 'is_long_hold' },
+];
+
+/** Returns the single most severe signal key, or null. */
+export function getPrimarySignal(p: Prospect): string | null {
+  for (const s of SIGNAL_SEVERITY) {
+    if (p[s.flag]) return s.key;
+  }
+  return null;
+}
+
+/** Days since first signal was detected. Returns null if no date. */
+export function getDaysInDistress(p: Prospect): number | null {
+  if (!p.first_signal_date) return null;
+  const first = new Date(p.first_signal_date);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - first.getTime()) / (1000 * 60 * 60 * 24));
+  return diff >= 0 ? diff : null;
 }
