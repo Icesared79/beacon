@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, X, Search, Loader2, ChevronDown, AlertTriangle, Clock, Eye } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
-import { getSignalsForProspect, hasHardDistress, getPriorityGroup, getPrimarySignal, getDaysInDistress } from '@/lib/prospect-helpers';
+import { getSignalsForProspect, hasHardDistress, getPriorityGroup, getPrimarySignal, getDaysInDistress, isEntityOwner } from '@/lib/prospect-helpers';
 import type { Prospect, PriorityGroup } from '@/lib/prospect-helpers';
 import { cn, formatCurrency, formatNumber, formatOwnerName } from '@/lib/utils';
 import { AtlasStatus } from '@/components/AtlasStatus';
@@ -136,9 +136,10 @@ export default function ProspectsPage() {
     setNameSearch('');
   }
 
-  // Sort all prospects by compound_score desc, then group
+  // Filter out entity/LLC owners, sort by score, then group
   const grouped = useMemo(() => {
-    const sorted = [...prospects].sort((a, b) => b.compound_score - a.compound_score);
+    const filtered = prospects.filter(p => !isEntityOwner(p.owner_name));
+    const sorted = filtered.sort((a, b) => b.compound_score - a.compound_score);
     const groups: Record<PriorityGroup, Prospect[]> = {
       critical: [],
       high_need: [],
@@ -409,7 +410,9 @@ function ProspectRow({ prospect }: { prospect: Prospect }) {
       {/* Days in distress */}
       <td className="px-4 py-3 text-right">
         {days !== null ? (
-          <p className="text-xs text-beacon-text-secondary tabular-nums">{days}d</p>
+          <p className="text-xs text-beacon-text-secondary tabular-nums">
+            {days >= 365 ? `${Math.round(days / 365)}y` : days >= 30 ? `${Math.round(days / 30)}mo` : `${days}d`}
+          </p>
         ) : (
           <p className="text-xs text-beacon-text-muted">—</p>
         )}

@@ -102,11 +102,39 @@ export function getPrimarySignal(p: Prospect): string | null {
   return null;
 }
 
-/** Days since first signal was detected. Returns null if no date. */
+/** Days since first signal was detected. Falls back to last_sale_date + years_held if no signal date. */
 export function getDaysInDistress(p: Prospect): number | null {
-  if (!p.first_signal_date) return null;
-  const first = new Date(p.first_signal_date);
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - first.getTime()) / (1000 * 60 * 60 * 24));
-  return diff >= 0 ? diff : null;
+  // Primary: use first_signal_date
+  const dateStr = p.first_signal_date || p.most_recent_signal_date;
+  if (dateStr) {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const diff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+      return diff >= 0 ? diff : null;
+    }
+  }
+  // Fallback: estimate from years_held (distress typically starts in last 10-20% of hold)
+  if (p.years_held && p.years_held > 0) {
+    const estimatedMonths = Math.max(3, Math.round(p.years_held * 0.15 * 12));
+    return estimatedMonths * 30;
+  }
+  return null;
+}
+
+// ── Entity name filter ──
+
+const ENTITY_KEYWORDS = [
+  'LLC', ' LP ', ' LP,', ' INC', ' CORP', 'HOLDINGS', 'RENTALS',
+  'GROUP', 'PROPERTIES', 'ASSOCIATES', 'INVESTMENTS', 'MANAGEMENT',
+  'REALTY', 'VENTURES', ' LTD', 'PARTNERS', 'PARTNERSHIP',
+  'COMPANY', 'ENTERPRISES', 'DEVELOPMENT', 'SERVICES',
+  'CAPITAL', 'FUNDING', 'ACQUISITIONS', 'COMMERCIAL',
+  'LLLP', 'REIT', 'LEASING',
+];
+
+/** Returns true if the owner name looks like a business entity, not an individual. */
+export function isEntityOwner(ownerName: string): boolean {
+  if (!ownerName) return false;
+  const upper = ownerName.toUpperCase();
+  return ENTITY_KEYWORDS.some(kw => upper.includes(kw));
 }
