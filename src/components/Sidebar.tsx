@@ -17,7 +17,6 @@ import {
 } from 'lucide-react'
 import { BeaconLogo } from './BeaconLogo'
 import { cn } from '@/lib/utils'
-import { getBrowserClient } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme-context'
 
 const navigation = [

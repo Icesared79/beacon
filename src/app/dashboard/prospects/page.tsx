@@ -7,6 +7,7 @@ import { SIGNAL_COLORS } from '@/lib/design-tokens';
 import { getSignalsForProspect, hasHardDistress, getPriorityGroup, getPrimarySignal, getDaysInDistress } from '@/lib/prospect-helpers';
 import type { Prospect, PriorityGroup } from '@/lib/prospect-helpers';
 import { cn, formatCurrency, formatNumber, formatOwnerName } from '@/lib/utils';
+import { AtlasStatus } from '@/components/AtlasStatus';
 
 const PAGE_SIZE = 25;
 
@@ -190,6 +191,7 @@ export default function ProspectsPage() {
         {groupCountsText && (
           <p className="text-xs text-beacon-text-muted mt-0.5">{groupCountsText}</p>
         )}
+        <AtlasStatus label="Atlas data" />
       </div>
 
       {/* Filter bar */}

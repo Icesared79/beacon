@@ -1,4 +1,4 @@
-import { getServiceClient } from '@/lib/supabase';
+import { fetchSchema } from '@/lib/atlas-api';
 
 const STATE_NAMES: Record<string, string> = {
   AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
@@ -14,52 +14,50 @@ const STATE_NAMES: Record<string, string> = {
   DC: 'District of Columbia',
 };
 
+// Map Atlas signal codes to user-friendly filter labels
+const SIGNAL_LABEL_MAP: Record<string, string> = {
+  tax_delinquency_active: 'Tax Delinquency',
+  foreclosure_risk: 'Foreclosure Risk',
+  lis_pendens_active: 'Foreclosure Risk',
+  lis_pendens_compound: 'Foreclosure Risk',
+  pre_foreclosure_long_hold: 'Pre-Foreclosure',
+  bankruptcy: 'Bankruptcy',
+  probate_filing_active: 'Probate',
+  distress_flagged: 'Distress Flagged',
+  hmda_loan_denial: 'Loan Denial',
+  llc_dissolved: 'LLC Dissolved',
+  high_equity_confirmed: 'Equity at Risk',
+  long_hold_confirmed: 'Long-term Homeowner',
+  high_vacancy: 'High Vacancy',
+};
+
 export async function GET() {
-  const supabase = getServiceClient();
-  if (!supabase) {
-    return Response.json({ error: 'Database not configured' }, { status: 500 });
-  }
+  try {
+    const schema = await fetchSchema();
 
-  // Get distinct states
-  const { data: stateRows, error: stateErr } = await supabase
-    .from('beacon_prospects')
-    .select('state')
-    .not('state', 'is', null)
-    .limit(1000);
+    // States — derived from schema.states_covered (only states with real data)
+    const states = (schema.states_covered || [])
+      .map(s => s.state)
+      .filter(Boolean)
+      .sort()
+      .map(abbr => ({ value: abbr, label: STATE_NAMES[abbr] || abbr }));
 
-  if (stateErr) {
-    return Response.json({ error: stateErr.message }, { status: 500 });
-  }
+    // Signal types — derived from schema.signal_types (only types that exist)
+    // Group related codes under single labels (e.g. lis_pendens_active + lis_pendens_compound → "Foreclosure Risk")
+    const seenLabels = new Set<string>();
+    const indicators: { key: string; label: string }[] = [];
 
-  const uniqueStates = [...new Set((stateRows || []).map((r: { state: string }) => r.state))]
-    .filter(Boolean)
-    .sort();
-
-  const states = uniqueStates.map((abbr) => ({
-    value: abbr,
-    label: STATE_NAMES[abbr] || abbr,
-  }));
-
-  // Determine which signal types actually exist by checking boolean columns
-  const signalChecks = [
-    { key: 'tax_delinquency', col: 'has_tax_delinquency', label: 'Tax Delinquency' },
-    { key: 'lis_pendens', col: 'has_lis_pendens', label: 'Foreclosure Risk' },
-    { key: 'bankruptcy', col: 'has_bankruptcy', label: 'Bankruptcy' },
-    { key: 'dissolved_llc', col: 'has_dissolved_llc', label: 'LLC Dissolved' },
-    { key: 'probate', col: 'has_probate', label: 'Probate' },
-    { key: 'high_equity', col: 'is_high_equity', label: 'Equity at Risk' },
-  ];
-
-  const indicators: { key: string; label: string }[] = [];
-  for (const check of signalChecks) {
-    const { count } = await supabase
-      .from('beacon_prospects')
-      .select('id', { count: 'exact', head: true })
-      .eq(check.col, true);
-    if (count && count > 0) {
-      indicators.push({ key: check.key, label: check.label });
+    for (const sig of (schema.signal_types || [])) {
+      const label = SIGNAL_LABEL_MAP[sig.code] || sig.label || sig.code;
+      if (!seenLabels.has(label)) {
+        seenLabels.add(label);
+        indicators.push({ key: sig.code, label });
+      }
     }
-  }
 
-  return Response.json({ states, indicators });
+    return Response.json({ states, indicators });
+  } catch (err) {
+    console.error('[filters] Atlas schema error:', err);
+    return Response.json({ states: [], indicators: [] });
+  }
 }

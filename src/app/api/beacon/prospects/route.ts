@@ -1,94 +1,81 @@
 import { NextRequest } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { fetchHouseholds } from '@/lib/atlas-api';
 
 export async function GET(request: NextRequest) {
-  const supabase = getServiceClient();
-  if (!supabase) {
-    return Response.json({ error: 'Database not configured' }, { status: 500 });
-  }
-
   const { searchParams } = request.nextUrl;
-  const search = searchParams.get('search');
-  const signal = searchParams.get('signal');
-  const minScore = Number(searchParams.get('minScore') || 0);
-  const status = searchParams.get('status');
-  const state = searchParams.get('state');
-  const minEquity = searchParams.get('minEquity');
-  const maxEquity = searchParams.get('maxEquity');
+  const state = searchParams.get('state') || '';
+  const signal = searchParams.get('signal') || '';
+  const minScore = searchParams.get('minScore') || '';
   const page = Number(searchParams.get('page') || 0);
   const pageSize = Number(searchParams.get('pageSize') || 25);
 
-  let query = supabase
-    .from('beacon_prospects')
-    .select('*', { count: 'exact' });
+  try {
+    const data = await fetchHouseholds({
+      state,
+      signal_type: signal,
+      min_score: minScore || undefined,
+      limit: String(pageSize),
+      offset: String(page * pageSize),
+    });
 
-  if (search) {
-    query = query.or(
-      `owner_name.ilike.%${search}%,address.ilike.%${search}%,city.ilike.%${search}%,zip.ilike.%${search}%`
+    // Map Atlas households to the shape the frontend expects
+    const prospects = (data.households || []).map((h) => ({
+      id: h.parcel_id,
+      address: h.address,
+      city: h.city,
+      state: h.state,
+      zip: h.zip,
+      county: h.county,
+      owner_name: h.owner_name,
+      assessed_value: h.assessed_value,
+      estimated_equity: h.estimated_equity,
+      last_sale_price: h.last_sale_price,
+      last_sale_date: h.last_sale_date,
+      years_held: h.years_held,
+      compound_score: h.compound_score,
+      signal_count: h.signal_count,
+      // Map has_distress + signal_codes into individual boolean flags
+      has_tax_delinquency: h.has_distress || false,
+      has_lis_pendens: (h.signal_codes || []).some((s: string) =>
+        ['lis_pendens_active', 'lis_pendens_compound', 'foreclosure_risk'].includes(s)
+      ),
+      has_dissolved_llc: (h.signal_codes || []).some((s: string) =>
+        ['llc_dissolved'].includes(s)
+      ),
+      has_bankruptcy: (h.signal_codes || []).some((s: string) =>
+        ['bankruptcy'].includes(s)
+      ),
+      has_probate: (h.signal_codes || []).some((s: string) =>
+        ['probate_filing_active'].includes(s)
+      ),
+      is_long_hold: h.is_long_hold,
+      is_high_equity: h.is_high_equity,
+      first_signal_date: h.first_signal_date,
+      most_recent_signal_date: h.first_signal_date, // Atlas only provides first
+      status: 'new',
+      latitude: h.latitude,
+      longitude: h.longitude,
+      owner_mailing_address: h.owner_mailing_address,
+      owner_city: h.owner_city,
+      owner_state: h.owner_state,
+      owner_zip: h.owner_zip,
+      is_absentee_owner: h.is_absentee_owner,
+      suggested_service: h.suggested_service,
+      atlas_parcel_id: h.parcel_id,
+    }));
+
+    return Response.json({
+      prospects,
+      total: data.count ?? prospects.length,
+      page,
+      pageSize,
+      pageCount: Math.ceil((data.count ?? prospects.length) / pageSize),
+    });
+  } catch (err) {
+    console.error('[prospects] Atlas API error:', err);
+    return Response.json(
+      { error: 'Failed to load households from Atlas' },
+      { status: 502 }
     );
   }
-  if (status) query = query.eq('status', status);
-  if (state) query = query.eq('state', state);
-  if (minScore > 0) query = query.gte('compound_score', minScore);
-  if (signal) {
-    const signalMap: Record<string, string> = {
-      tax_delinquency: 'has_tax_delinquency',
-      lis_pendens: 'has_lis_pendens',
-      dissolved_llc: 'has_dissolved_llc',
-      bankruptcy: 'has_bankruptcy',
-      probate: 'has_probate',
-      long_hold: 'is_long_hold',
-      high_equity: 'is_high_equity',
-    };
-    const col = signalMap[signal];
-    if (col) query = query.eq(col, true);
-  }
-  if (minEquity) query = query.gte('estimated_equity', Number(minEquity));
-  if (maxEquity) query = query.lte('estimated_equity', Number(maxEquity));
-
-  query = query
-    .order('compound_score', { ascending: false })
-    .range(page * pageSize, (page + 1) * pageSize - 1);
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json({
-    prospects: data || [],
-    total: count || 0,
-    page,
-    pageSize,
-    pageCount: Math.ceil((count || 0) / pageSize),
-  });
-}
-
-export async function PATCH(request: NextRequest) {
-  const supabase = getServiceClient();
-  if (!supabase) {
-    return Response.json({ error: 'Database not configured' }, { status: 500 });
-  }
-
-  const body = await request.json();
-  const { id, status, assigned_to, note } = body;
-
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (status !== undefined) updates.status = status;
-  if (assigned_to !== undefined) updates.assigned_to = assigned_to;
-  if (note !== undefined) updates.notes = note;
-
-  const { data, error } = await supabase
-    .from('beacon_prospects')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json({ success: true, prospect: data });
 }

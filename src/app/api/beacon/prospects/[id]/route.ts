@@ -1,61 +1,74 @@
 import { NextRequest } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { fetchHousehold } from '@/lib/atlas-api';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = getServiceClient();
-  if (!supabase) {
-    return Response.json({ error: 'Database not configured' }, { status: 500 });
-  }
-
   const { id } = await params;
 
-  const { data: prospect, error } = await supabase
-    .from('beacon_prospects')
-    .select('*')
-    .eq('id', id)
-    .single();
+  try {
+    const h = await fetchHousehold(id);
 
-  if (error || !prospect) {
-    return Response.json({ error: 'Prospect not found' }, { status: 404 });
+    if (!h || !h.parcel_id) {
+      return Response.json({ error: 'Household not found' }, { status: 404 });
+    }
+
+    // Map Atlas response to the shape the frontend expects
+    const prospect = {
+      id: h.parcel_id,
+      address: h.address,
+      city: h.city,
+      state: h.state,
+      zip: h.zip,
+      county: h.county,
+      owner_name: h.owner_name,
+      assessed_value: h.assessed_value,
+      estimated_equity: h.estimated_equity,
+      last_sale_price: h.last_sale_price,
+      last_sale_date: h.last_sale_date,
+      years_held: h.years_held,
+      compound_score: h.compound_score,
+      signal_count: h.signal_count,
+      has_tax_delinquency: h.has_distress || false,
+      has_lis_pendens: (h.signal_codes || []).some((s: string) =>
+        ['lis_pendens_active', 'lis_pendens_compound', 'foreclosure_risk'].includes(s)
+      ),
+      has_dissolved_llc: (h.signal_codes || []).some((s: string) =>
+        ['llc_dissolved'].includes(s)
+      ),
+      has_bankruptcy: (h.signal_codes || []).some((s: string) =>
+        ['bankruptcy'].includes(s)
+      ),
+      has_probate: (h.signal_codes || []).some((s: string) =>
+        ['probate_filing_active'].includes(s)
+      ),
+      is_long_hold: h.is_long_hold,
+      is_high_equity: h.is_high_equity,
+      first_signal_date: h.first_signal_date,
+      most_recent_signal_date: h.first_signal_date,
+      status: 'new',
+      latitude: h.latitude,
+      longitude: h.longitude,
+      owner_mailing_address: h.owner_mailing_address,
+      owner_city: h.owner_city,
+      owner_state: h.owner_state,
+      owner_zip: h.owner_zip,
+      is_absentee_owner: h.is_absentee_owner,
+      suggested_service: h.suggested_service,
+      atlas_parcel_id: h.parcel_id,
+    };
+
+    return Response.json({
+      prospect,
+      events: [],
+      activity: [],
+    });
+  } catch (err) {
+    console.error(`[prospect/${id}] Atlas API error:`, err);
+    return Response.json(
+      { error: 'Failed to load household from Atlas' },
+      { status: 502 }
+    );
   }
-
-  return Response.json({
-    prospect,
-    events: [],
-    activity: [],
-  });
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const supabase = getServiceClient();
-  if (!supabase) {
-    return Response.json({ error: 'Database not configured' }, { status: 500 });
-  }
-
-  const { id } = await params;
-  const body = await request.json();
-
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (body.status !== undefined) updates.status = body.status;
-  if (body.assigned_to !== undefined) updates.assigned_to = body.assigned_to;
-  if (body.note !== undefined) updates.notes = body.note;
-
-  const { data, error } = await supabase
-    .from('beacon_prospects')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json({ success: true, prospect: data });
 }

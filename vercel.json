@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/sync-atlas",
-      "schedule": "0 2 * * *"
-    }
-  ]
-}
+{}

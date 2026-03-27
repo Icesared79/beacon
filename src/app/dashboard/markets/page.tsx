@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Building2,
   AlertTriangle,
@@ -9,15 +9,24 @@ import {
   ArrowUpDown,
   ArrowDown,
   ArrowUp,
+  Loader2,
 } from 'lucide-react';
-import {
-  ACCC_MARKETS,
-  ACCC_OFFICES,
-  type MarketData,
-} from '@/lib/market-data';
+import { ACCC_OFFICES } from '@/lib/market-data';
 import { formatNumber } from '@/lib/utils';
+import { AtlasStatus } from '@/components/AtlasStatus';
 
 /* ── Types ── */
+
+interface MarketFromAPI {
+  city: string;
+  state: string;
+  county: string;
+  prospects: number;
+  critical: number;
+  high: number;
+  warning: number;
+  score: number;
+}
 
 interface CoverageRow {
   city: string;
@@ -34,12 +43,11 @@ interface CoverageRow {
 
 const OFFICE_SET = new Set(ACCC_OFFICES.map((o) => `${o.city}|${o.state}`));
 
-function buildCoverageRows(): CoverageRow[] {
+function buildCoverageRows(markets: MarketFromAPI[]): CoverageRow[] {
   const rows: CoverageRow[] = [];
   const seen = new Set<string>();
 
-  // Markets with data
-  for (const m of ACCC_MARKETS) {
+  for (const m of markets) {
     const key = `${m.city}|${m.state}`;
     seen.add(key);
     const hasOffice = OFFICE_SET.has(key);
@@ -55,7 +63,6 @@ function buildCoverageRows(): CoverageRow[] {
     });
   }
 
-  // Offices with no market data = coverage gaps
   for (const o of ACCC_OFFICES) {
     const key = `${o.city}|${o.state}`;
     if (!seen.has(key)) {
@@ -76,18 +83,13 @@ function buildCoverageRows(): CoverageRow[] {
   return rows;
 }
 
-const ALL_ROWS = buildCoverageRows();
-
 /* ── Sort logic ── */
 
 type SortCol = 'market' | 'office' | 'coverage' | 'households' | 'urgent' | 'needScore';
 
 function defaultSort(a: CoverageRow, b: CoverageRow): number {
-  // Gaps first
   if (a.isGap !== b.isGap) return a.isGap ? -1 : 1;
-  // Then active by need score desc
   if (a.coverage === 'active' && b.coverage === 'active') return b.needScore - a.needScore;
-  // Then no-office last
   if (!a.hasOffice && b.hasOffice) return 1;
   if (a.hasOffice && !b.hasOffice) return -1;
   return 0;
@@ -96,19 +98,41 @@ function defaultSort(a: CoverageRow, b: CoverageRow): number {
 /* ── Score badge ── */
 
 function scoreBadgeColor(score: number): string {
-  if (score >= 80) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-  if (score >= 65) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-  if (score >= 50) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+  if (score >= 70) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+  if (score >= 50) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+  if (score >= 30) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
   return 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
 }
 
 /* ── Page ── */
 
 export default function CoveragePage() {
+  const [markets, setMarkets] = useState<MarketFromAPI[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortAsc, setSortAsc] = useState(false);
+
+  useEffect(() => {
+    async function loadMarkets() {
+      try {
+        const res = await fetch('/api/beacon/markets');
+        if (res.ok) {
+          const data = await res.json();
+          setMarkets(data.markets || []);
+        }
+      } catch (err) {
+        console.error('Failed to load markets:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadMarkets();
+  }, []);
+
+  const allRows = useMemo(() => buildCoverageRows(markets), [markets]);
+
   const rows = useMemo(() => {
-    const sorted = [...ALL_ROWS];
+    const sorted = [...allRows];
     if (!sortCol) {
       sorted.sort(defaultSort);
       return sorted;
@@ -138,7 +162,7 @@ export default function CoveragePage() {
       return sortAsc ? cmp : -cmp;
     });
     return sorted;
-  }, [sortCol, sortAsc]);
+  }, [allRows, sortCol, sortAsc]);
 
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) {
@@ -150,9 +174,9 @@ export default function CoveragePage() {
   };
 
   /* Aggregates */
-  const marketsActive = ALL_ROWS.filter((r) => r.coverage === 'active').length;
-  const marketsNoData = ALL_ROWS.filter((r) => r.isGap).length;
-  const totalHouseholds = ALL_ROWS.reduce((s, r) => s + r.households, 0);
+  const marketsActive = allRows.filter((r) => r.coverage === 'active').length;
+  const marketsNoData = allRows.filter((r) => r.isGap).length;
+  const totalHouseholds = allRows.reduce((s, r) => s + r.households, 0);
 
   const SortIcon = ({ col }: { col: SortCol }) => {
     if (sortCol !== col) return <ArrowUpDown size={12} className="text-beacon-text-muted ml-1" />;
@@ -162,6 +186,15 @@ export default function CoveragePage() {
   };
 
   const thClass = 'text-left text-[11px] font-semibold text-beacon-text-muted uppercase tracking-wider px-3 py-2.5 cursor-pointer select-none hover:text-beacon-text transition-colors whitespace-nowrap';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-beacon-primary" size={24} />
+        <span className="ml-2 text-sm text-beacon-text-muted">Loading coverage data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,6 +207,7 @@ export default function CoveragePage() {
           <p className="text-sm text-beacon-text-muted mt-1">
             Where Beacon is working — and where it isn&apos;t yet.
           </p>
+          <AtlasStatus label="Coverage data" />
         </div>
       </div>
 
@@ -249,13 +283,11 @@ export default function CoveragePage() {
                       : 'hover:bg-beacon-surface-alt/50'
                   }`}
                 >
-                  {/* Market */}
                   <td className="px-3 py-2.5">
                     <span className="font-medium text-beacon-text">{row.city}</span>
                     <span className="text-beacon-text-muted ml-1">{row.state}</span>
                   </td>
 
-                  {/* Office */}
                   <td className="px-3 py-2.5">
                     {row.hasOffice ? (
                       <span className="inline-flex items-center gap-1.5">
@@ -270,7 +302,6 @@ export default function CoveragePage() {
                     )}
                   </td>
 
-                  {/* Coverage */}
                   <td className="px-3 py-2.5">
                     {row.coverage === 'active' ? (
                       <span className="text-xs font-medium text-green-700 dark:text-green-400">Active</span>
@@ -279,7 +310,6 @@ export default function CoveragePage() {
                     )}
                   </td>
 
-                  {/* Households */}
                   <td className="px-3 py-2.5 tabular-nums">
                     {row.households > 0 ? (
                       <span className="text-beacon-text font-medium">{formatNumber(row.households)}</span>
@@ -288,7 +318,6 @@ export default function CoveragePage() {
                     )}
                   </td>
 
-                  {/* Urgent */}
                   <td className="px-3 py-2.5 tabular-nums">
                     {row.urgent > 0 ? (
                       <span className="text-beacon-text font-medium">{formatNumber(row.urgent)}</span>
@@ -297,7 +326,6 @@ export default function CoveragePage() {
                     )}
                   </td>
 
-                  {/* Need Score */}
                   <td className="px-3 py-2.5">
                     {row.needScore > 0 ? (
                       <span className={`inline-flex items-center justify-center h-5 min-w-[28px] rounded text-[10px] font-bold px-1.5 ${scoreBadgeColor(row.needScore)}`}>
@@ -308,7 +336,6 @@ export default function CoveragePage() {
                     )}
                   </td>
 
-                  {/* Gap Indicator */}
                   <td className="px-3 py-2.5">
                     {row.isGap && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded-full whitespace-nowrap">

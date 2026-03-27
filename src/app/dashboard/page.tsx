@@ -12,7 +12,6 @@ import {
   Inbox,
 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
-import { getBrowserClient } from '@/lib/supabase';
 
 interface DashboardStats {
   total: number;
@@ -39,17 +38,8 @@ export default function DashboardPage() {
     setMounted(true);
 
     async function loadUser() {
-      const supabase = getBrowserClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data } = await supabase
-          .from('beacon_users')
-          .select('full_name')
-          .eq('id', session.user.id)
-          .single();
-        const name = data?.full_name || session.user.email?.split('@')[0] || '';
-        setFirstName(name.split(' ')[0]);
-      }
+      // User name comes from the session cookie, not a database
+      // For now, greeting is generic until proper auth is wired
     }
 
     async function loadDashboard() {
