@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, X, Search, Loader2, ChevronDown, AlertTriangle, Clock, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, Loader2, ChevronDown } from 'lucide-react';
 import { SIGNAL_COLORS } from '@/lib/design-tokens';
 import { getSignalsForProspect, hasHardDistress, getPriorityGroup, getPrimarySignal, getDaysInDistress, isEntityOwner } from '@/lib/prospect-helpers';
 import type { Prospect, PriorityGroup } from '@/lib/prospect-helpers';
@@ -14,8 +14,8 @@ const PAGE_SIZE = 25;
 const EQUITY_PRESETS = [
   { label: 'Any', min: '', max: '' },
   { label: 'Under $100K', min: '', max: '100000' },
-  { label: '$100K–$500K', min: '100000', max: '500000' },
-  { label: '$500K–$1M', min: '500000', max: '1000000' },
+  { label: '$100K\u2013$500K', min: '100000', max: '500000' },
+  { label: '$500K\u2013$1M', min: '500000', max: '1000000' },
   { label: 'Over $1M', min: '1000000', max: '' },
 ];
 
@@ -26,37 +26,21 @@ const GROUP_CONFIG: Record<PriorityGroup, {
   label: string;
   description: string;
   color: string;
-  bgLight: string;
-  bgDark: string;
-  textColor: string;
-  icon: typeof AlertTriangle;
 }> = {
   critical: {
     label: 'Critical',
-    description: 'Active foreclosure or lis pendens — immediate outreach',
+    description: 'Active foreclosure or lis pendens \u2014 immediate outreach',
     color: '#DC2626',
-    bgLight: 'bg-red-50 dark:bg-red-950/30',
-    bgDark: 'bg-red-100 dark:bg-red-900/20',
-    textColor: 'text-red-700 dark:text-red-400',
-    icon: AlertTriangle,
   },
   high_need: {
     label: 'High Need',
-    description: 'Tax delinquency, bankruptcy, or probate — outreach this week',
+    description: 'Tax delinquency, bankruptcy, or probate \u2014 outreach this week',
     color: '#D97706',
-    bgLight: 'bg-amber-50 dark:bg-amber-950/30',
-    bgDark: 'bg-amber-100 dark:bg-amber-900/20',
-    textColor: 'text-amber-700 dark:text-amber-400',
-    icon: Clock,
   },
   monitor: {
     label: 'Monitor',
-    description: 'Early stage signals — watch list',
+    description: 'Early stage signals \u2014 watch list',
     color: '#2563EB',
-    bgLight: 'bg-blue-50 dark:bg-blue-950/30',
-    bgDark: 'bg-blue-100 dark:bg-blue-900/20',
-    textColor: 'text-blue-700 dark:text-blue-400',
-    icon: Eye,
   },
 };
 
@@ -75,7 +59,6 @@ export default function ProspectsPage() {
   const [equityPreset, setEquityPreset] = useState(0);
   const [nameSearch, setNameSearch] = useState('');
 
-  // Per-group pagination
   const [groupPages, setGroupPages] = useState<Record<PriorityGroup, number>>({
     critical: 0,
     high_need: 0,
@@ -122,7 +105,6 @@ export default function ProspectsPage() {
 
   useEffect(() => { fetchProspects(); }, [fetchProspects]);
 
-  // Reset pagination when filters change
   useEffect(() => {
     setGroupPages({ critical: 0, high_need: 0, monitor: 0 });
   }, [stateFilter, signalFilter, nameSearch, equityPreset]);
@@ -136,24 +118,13 @@ export default function ProspectsPage() {
     setNameSearch('');
   }
 
-  // Filter out entity/LLC owners, $0 equity / low assessed value, sort by score, then group
   const grouped = useMemo(() => {
-    console.log('[Beacon] Before filter:', prospects.length, 'prospects');
-    const entityFiltered: string[] = [];
     const filtered = prospects.filter(p => {
-      // Fix 3: entity name filter
-      if (isEntityOwner(p.owner_name)) {
-        entityFiltered.push(p.owner_name);
-        return false;
-      }
-      // Fix 7: hide records with null, 0, or <$5K assessed value
+      if (isEntityOwner(p.owner_name)) return false;
       if (!p.assessed_value || p.assessed_value < 5000) return false;
-      // Fix 7: hide $0 equity when last sale is a real sale (not $0/$1 transfer)
       if (p.last_sale_price > 1 && (!p.estimated_equity || p.estimated_equity <= 0)) return false;
       return true;
     });
-    console.log('[Beacon] After filter:', filtered.length, 'prospects');
-    console.log('[Beacon] Entity-filtered names:', entityFiltered);
     const sorted = filtered.sort((a, b) => b.compound_score - a.compound_score);
     const groups: Record<PriorityGroup, Prospect[]> = {
       critical: [],
@@ -172,24 +143,38 @@ export default function ProspectsPage() {
     monitor: grouped.monitor.length,
   }), [grouped]);
 
-  // Visible groups (non-empty)
   const visibleGroups = GROUP_ORDER.filter(g => groupCounts[g] > 0);
 
-  // Build subtitle
-  const subtitleText = `${formatNumber(totalCount)} household${totalCount !== 1 ? 's' : ''} identified`;
   const stateLabel = stateFilter ? stateOptions.find(s => s.value === stateFilter)?.label || stateFilter : '';
-  const groupCountsText = visibleGroups.map(g =>
-    `${formatNumber(groupCounts[g])} ${GROUP_CONFIG[g].label}`
-  ).join(' · ');
+
+  // Count unique states
+  const stateCount = useMemo(() => {
+    const s = new Set(prospects.map(p => p.state).filter(Boolean));
+    return s.size;
+  }, [prospects]);
 
   function setGroupPage(group: PriorityGroup, page: number) {
     setGroupPages(prev => ({ ...prev, [group]: page }));
   }
 
+  // Active filter pills
+  const activeFilters: { key: string; label: string; clear: () => void }[] = [];
+  if (stateFilter) {
+    const sl = stateOptions.find(s => s.value === stateFilter)?.label || stateFilter;
+    activeFilters.push({ key: 'state', label: sl, clear: () => setStateFilter('') });
+  }
+  if (signalFilter) {
+    const il = indicatorOptions.find(i => i.key === signalFilter)?.label || signalFilter;
+    activeFilters.push({ key: 'signal', label: il, clear: () => setSignalFilter('') });
+  }
+  if (equityPreset !== 0) {
+    activeFilters.push({ key: 'equity', label: EQUITY_PRESETS[equityPreset].label, clear: () => setEquityPreset(0) });
+  }
+
   if (loading && prospects.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-beacon-primary" size={24} />
+        <Loader2 className="animate-spin text-beacon-text-muted" size={24} />
         <span className="ml-2 text-sm text-beacon-text-muted">Loading households...</span>
       </div>
     );
@@ -198,91 +183,104 @@ export default function ProspectsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-beacon-text tracking-tight">Households</h1>
-        <p className="text-sm text-beacon-text-muted mt-1">
-          {subtitleText}{stateLabel ? ` in ${stateLabel}` : ''}
-          {loading && <Loader2 className="inline-block ml-2 animate-spin" size={12} />}
-        </p>
-        {groupCountsText && (
-          <p className="text-xs text-beacon-text-muted mt-0.5">{groupCountsText}</p>
-        )}
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-beacon-text tracking-tight">Households</h1>
+          <p className="text-[15px] text-beacon-text-muted mt-1.5 leading-relaxed">
+            {formatNumber(totalCount)} household{totalCount !== 1 ? 's' : ''} identified across {stateCount} state{stateCount !== 1 ? 's' : ''}
+            {stateLabel ? ` (filtered to ${stateLabel})` : ''}
+            {loading && <Loader2 className="inline-block ml-2 animate-spin" size={12} />}
+          </p>
+        </div>
         <AtlasStatus label="Atlas data" />
       </div>
 
       {/* Filter bar */}
-      <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted" />
-            <input
-              type="text"
-              placeholder="Name, address, or ZIP"
-              value={nameSearch}
-              onChange={(e) => setNameSearch(e.target.value)}
-              className="pl-8 pr-8 py-2 w-52 border border-beacon-border rounded-lg bg-beacon-bg text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
-            />
-            {nameSearch && (
-              <button onClick={() => setNameSearch('')} className="absolute right-2.5 top-2.5 text-beacon-text-muted hover:text-beacon-text">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* State */}
-          <div className="relative">
-            <select
-              value={stateFilter}
-              onChange={(e) => setStateFilter(e.target.value)}
-              className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
-            >
-              <option value="">All States</option>
-              {stateOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
-          </div>
-
-          {/* Indicator */}
-          <div className="relative">
-            <select
-              value={signalFilter}
-              onChange={(e) => setSignalFilter(e.target.value)}
-              className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
-            >
-              <option value="">All Indicators</option>
-              {indicatorOptions.map(ind => <option key={ind.key} value={ind.key}>{ind.label}</option>)}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
-          </div>
-
-          {/* Equity */}
-          <div className="relative">
-            <select
-              value={equityPreset}
-              onChange={(e) => setEquityPreset(Number(e.target.value))}
-              className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-2 bg-beacon-bg text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
-            >
-              {EQUITY_PRESETS.map((preset, i) => <option key={i} value={i}>Equity: {preset.label}</option>)}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-beacon-text-muted pointer-events-none" />
-          </div>
-
-          {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 text-xs font-medium text-beacon-text-muted hover:text-beacon-text transition-colors">
-              <X size={14} /> Clear all
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-[11px] h-4 w-4 text-beacon-text-muted" />
+          <input
+            type="text"
+            placeholder="Search by name, address, or ZIP..."
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            className="w-full pl-9 pr-9 py-[9px] border border-beacon-border rounded-lg bg-white text-sm text-beacon-text placeholder:text-beacon-text-muted focus:outline-none focus:ring-2 focus:ring-beacon-primary/20"
+          />
+          {nameSearch && (
+            <button onClick={() => setNameSearch('')} className="absolute right-3 top-[11px] text-beacon-text-muted hover:text-beacon-text">
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
+
+        {/* State */}
+        <div className="relative">
+          <select
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+            className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-[9px] bg-white text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
+          >
+            <option value="">All States</option>
+            {stateOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-[11px] h-4 w-4 text-beacon-text-muted pointer-events-none" />
+        </div>
+
+        {/* Indicator */}
+        <div className="relative">
+          <select
+            value={signalFilter}
+            onChange={(e) => setSignalFilter(e.target.value)}
+            className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-[9px] bg-white text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
+          >
+            <option value="">All Indicators</option>
+            {indicatorOptions.map(ind => <option key={ind.key} value={ind.key}>{ind.label}</option>)}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-[11px] h-4 w-4 text-beacon-text-muted pointer-events-none" />
+        </div>
+
+        {/* Equity */}
+        <div className="relative">
+          <select
+            value={equityPreset}
+            onChange={(e) => setEquityPreset(Number(e.target.value))}
+            className="appearance-none text-sm border border-beacon-border rounded-lg pl-3 pr-8 py-[9px] bg-white text-beacon-text focus:outline-none focus:ring-2 focus:ring-beacon-primary/20 cursor-pointer"
+          >
+            {EQUITY_PRESETS.map((preset, i) => <option key={i} value={i}>Equity: {preset.label}</option>)}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-[11px] h-4 w-4 text-beacon-text-muted pointer-events-none" />
+        </div>
       </div>
+
+      {/* Active filter pills */}
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          {activeFilters.map((f) => (
+            <button
+              key={f.key}
+              onClick={f.clear}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-[13px] font-medium rounded-full border border-beacon-border bg-white text-beacon-text-secondary hover:bg-beacon-surface-alt transition-colors cursor-pointer"
+            >
+              {f.label}
+              <X size={14} className="text-beacon-text-muted" />
+            </button>
+          ))}
+          {activeFilters.length > 1 && (
+            <button onClick={clearFilters} className="text-xs font-medium text-beacon-text-muted hover:text-beacon-text transition-colors ml-1">
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Priority groups */}
       {visibleGroups.length === 0 ? (
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-12 text-center">
-          <p className="text-sm text-beacon-text-muted">No households match your current filters</p>
+        <div className="py-16 text-center">
+          <p className="text-sm text-beacon-text-muted">No households match your current filters.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {visibleGroups.map(groupKey => (
             <PriorityGroupSection
               key={groupKey}
@@ -312,66 +310,43 @@ function PriorityGroupSection({
   onPageChange: (page: number) => void;
 }) {
   const config = GROUP_CONFIG[groupKey];
-  const Icon = config.icon;
   const pageCount = Math.ceil(prospects.length / PAGE_SIZE);
   const pageData = prospects.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <div className="bg-beacon-surface rounded-xl border border-beacon-border overflow-hidden">
-      {/* Group header */}
-      <div className={cn('px-5 py-3 border-b border-beacon-border flex items-center gap-3', config.bgLight)}>
-        <div className={cn('flex items-center justify-center w-7 h-7 rounded-lg', config.bgDark)}>
-          <Icon size={14} style={{ color: config.color }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={cn('text-sm font-bold', config.textColor)}>{config.label}</span>
-            <span className="text-xs text-beacon-text-muted">({formatNumber(prospects.length)})</span>
-          </div>
-          <p className="text-xs text-beacon-text-muted">{config.description}</p>
-        </div>
+    <div>
+      {/* Group header — left border accent, white background */}
+      <div className="flex items-center gap-3 mb-3 pl-3" style={{ borderLeft: `3px solid ${config.color}` }}>
+        <span className="text-sm font-semibold" style={{ color: config.color }}>{config.label}</span>
+        <span className="text-[13px] text-beacon-text-muted">{formatNumber(prospects.length)}</span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-beacon-border bg-beacon-surface-alt/50">
-              <th className="text-left px-5 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[18%]">Owner</th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[22%]">Address</th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[16%]">Primary Signal</th>
-              <th className="text-right px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[12%]">Equity</th>
-              <th className="text-right px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[10%]">In Distress</th>
-              <th className="text-center px-4 py-2.5 text-xs font-medium text-beacon-text-muted uppercase tracking-wider w-[10%]"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-beacon-border">
-            {pageData.map(prospect => (
-              <ProspectRow key={prospect.id} prospect={prospect} />
-            ))}
-          </tbody>
-        </table>
+      {/* Rows */}
+      <div>
+        {pageData.map(prospect => (
+          <ProspectRow key={prospect.id} prospect={prospect} groupColor={config.color} />
+        ))}
       </div>
 
       {/* Pagination */}
       {pageCount > 1 && (
-        <div className="flex items-center justify-between px-5 py-2.5 border-t border-beacon-border">
+        <div className="flex items-center justify-between pt-3 mt-1">
           <span className="text-xs text-beacon-text-muted">
-            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, prospects.length)} of {formatNumber(prospects.length)}
+            {page * PAGE_SIZE + 1}\u2013{Math.min((page + 1) * PAGE_SIZE, prospects.length)} of {formatNumber(prospects.length)}
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => onPageChange(Math.max(0, page - 1))}
               disabled={page === 0}
-              className="p-1 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
+              className="p-1.5 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="text-xs text-beacon-text-secondary font-medium">{page + 1} / {pageCount}</span>
+            <span className="text-xs text-beacon-text-secondary font-medium tabular-nums">{page + 1} / {pageCount}</span>
             <button
               onClick={() => onPageChange(Math.min(pageCount - 1, page + 1))}
               disabled={page >= pageCount - 1}
-              className="p-1 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
+              className="p-1.5 rounded-md border border-beacon-border text-beacon-text-muted hover:bg-beacon-surface-alt disabled:opacity-40 transition-colors"
             >
               <ChevronRight size={14} />
             </button>
@@ -384,71 +359,69 @@ function PriorityGroupSection({
 
 // ── Individual Row ──
 
-function ProspectRow({ prospect }: { prospect: Prospect }) {
+function ProspectRow({ prospect, groupColor }: { prospect: Prospect; groupColor: string }) {
   const primarySignal = getPrimarySignal(prospect);
   const signalCount = getSignalsForProspect(prospect).length;
   const days = getDaysInDistress(prospect);
   const primaryDef = primarySignal ? SIGNAL_COLORS[primarySignal as keyof typeof SIGNAL_COLORS] : null;
 
   return (
-    <tr className="hover:bg-beacon-surface-alt/30 transition-colors group">
-      {/* Owner name */}
-      <td className="px-5 py-3">
-        <p className="text-sm font-medium text-beacon-text truncate">{formatOwnerName(prospect.owner_name)}</p>
-      </td>
+    <Link
+      href={`/dashboard/prospects/${prospect.id}`}
+      className="block no-underline"
+    >
+      <div className="flex items-center py-3.5 px-4 border-b border-beacon-border/50 hover:bg-slate-50 transition-colors cursor-pointer group">
+        {/* Owner + address */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-beacon-text truncate leading-snug">{formatOwnerName(prospect.owner_name)}</p>
+          <p className="text-sm text-beacon-text-muted mt-0.5 truncate">{prospect.address}, {prospect.city}, {prospect.state} {prospect.zip}</p>
+        </div>
 
-      {/* Address */}
-      <td className="px-4 py-3">
-        <p className="text-sm text-beacon-text truncate">{prospect.address}</p>
-        <p className="text-xs text-beacon-text-muted">{prospect.city}, {prospect.state} {prospect.zip}</p>
-      </td>
-
-      {/* Primary signal + count */}
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
+        {/* Primary signal badge + count */}
+        <div className="flex items-center gap-2 ml-6 min-w-[140px]">
           {primaryDef && (
-            <span className={cn('inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap', primaryDef.bg, primaryDef.text)}>
+            <span
+              className="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap"
+              style={{ backgroundColor: groupColor + '12', color: groupColor }}
+            >
               {primaryDef.label}
             </span>
           )}
           {signalCount > 1 && (
-            <span className="text-[10px] text-beacon-text-muted whitespace-nowrap">{signalCount} signals</span>
+            <span className="text-xs text-beacon-text-muted whitespace-nowrap">+{signalCount - 1} more</span>
           )}
         </div>
-      </td>
 
-      {/* Equity — Fix 4: handle $0/$1 transfer sales */}
-      <td className="px-4 py-3 text-right">
-        {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
-          <>
-            <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.assessed_value)}</p>
-            <p className="text-[10px] text-beacon-text-muted">Based on assessed value</p>
-          </>
-        ) : (
-          <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.estimated_equity || prospect.assessed_value)}</p>
-        )}
-      </td>
+        {/* Equity */}
+        <div className="text-right ml-6 min-w-[100px]">
+          {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
+            <>
+              <p className="text-[15px] font-medium text-beacon-text tabular-nums">{formatCurrency(prospect.assessed_value)}</p>
+              <p className="text-[11px] text-beacon-text-muted">Based on assessed value</p>
+            </>
+          ) : (
+            <p className="text-[15px] font-medium text-beacon-text tabular-nums">{formatCurrency(prospect.estimated_equity || prospect.assessed_value)}</p>
+          )}
+        </div>
 
-      {/* Days in distress */}
-      <td className="px-4 py-3 text-right">
-        {days !== null ? (
-          <p className="text-xs text-beacon-text-secondary tabular-nums">
-            {days >= 365 ? `${Math.round(days / 365)}y` : days >= 30 ? `${Math.round(days / 30)}mo` : `${days}d`}
-          </p>
-        ) : (
-          <p className="text-xs text-beacon-text-muted">—</p>
-        )}
-      </td>
+        {/* Days in distress */}
+        <div className="text-right ml-6 min-w-[48px]">
+          {days !== null ? (
+            <p className="text-sm text-beacon-text tabular-nums font-medium">
+              {days >= 365 ? `${Math.round(days / 365)}y` : days >= 30 ? `${Math.round(days / 30)}mo` : `${days}d`}
+            </p>
+          ) : (
+            <p className="text-sm text-beacon-text-muted">\u2014</p>
+          )}
+        </div>
 
-      {/* Review button */}
-      <td className="px-4 py-3 text-center">
-        <Link
-          href={`/dashboard/prospects/${prospect.id}`}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-beacon-primary bg-beacon-primary-muted hover:bg-beacon-primary hover:text-white transition-colors"
-        >
-          Review
-        </Link>
-      </td>
-    </tr>
+        {/* Review button */}
+        <div className="ml-6">
+          <span className="inline-flex items-center px-4 py-1.5 rounded-md text-[13px] font-medium border border-beacon-border text-beacon-text-secondary group-hover:border-beacon-primary group-hover:text-beacon-primary transition-colors">
+            Review
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }

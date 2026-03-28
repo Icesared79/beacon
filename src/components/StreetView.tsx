@@ -93,7 +93,7 @@ export function StreetView({ address, city, state, zip }: StreetViewProps) {
         <img
           src={`https://maps.googleapis.com/maps/api/streetview?size=1200x400&location=${encodeURIComponent(fullAddress)}&fov=90&pitch=5&key=${apiKey}`}
           alt={`Street view of ${address}`}
-          className="w-full h-[260px] object-cover"
+          className="w-full h-[200px] object-cover"
         />
       </div>
     );
@@ -104,7 +104,7 @@ export function StreetView({ address, city, state, zip }: StreetViewProps) {
       <div
         ref={containerRef}
         className="w-full"
-        style={{ height: 300 }}
+        style={{ height: 220 }}
       />
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]">
