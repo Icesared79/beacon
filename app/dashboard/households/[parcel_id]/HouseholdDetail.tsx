@@ -102,7 +102,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   const hasApiKey = apiKey && apiKey.length > 0
   const streetViewEmbedUrl = hasApiKey
-    ? `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(fullAddress)}&heading=210&pitch=10&fov=90`
+    ? `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(fullAddress)}&maptype=satellite&zoom=18`
     : null
 
   return (
