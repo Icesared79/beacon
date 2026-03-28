@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import type { HouseholdDetail as HouseholdDetailType } from '@/lib/atlas-api'
 import { ContactLookup } from '@/components/ContactLookup'
+import { StreetView } from '@/components/StreetView'
 import { formatOwnerName, getSeverityBadgeClass, formatMailingAddress } from '@/lib/format-name'
 import {
   formatCurrency,
@@ -86,7 +87,6 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
   const [savedNotes, setSavedNotes] = useState<string[]>([])
   const [status, setStatus] = useState('new')
   const [counselor, setCounselor] = useState('')
-  const fallbackRef = useRef<HTMLDivElement>(null)
 
   const risk = riskBadgeFromSignals(h.signal_codes)
   const rawAddr = `${titleCase(h.address)}, ${titleCase(h.city)}, ${h.state} ${h.zip}`
@@ -99,12 +99,6 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
     ? new Date(Math.max(...signals.map((s) => new Date(s.detected_at).getTime()))).toLocaleDateString()
     : null
   const showMostRecent = lastSignalDate && lastSignalDate !== firstDate
-
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-  const hasApiKey = apiKey && apiKey.length > 0
-  const streetViewEmbedUrl = hasApiKey
-    ? `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(fullAddress)}&maptype=satellite&zoom=18`
-    : null
 
   return (
     <div>
@@ -143,45 +137,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
       {/* 2. Street View */}
       <div style={{ marginBottom: 24 }}>
-        {streetViewEmbedUrl && (
-          <iframe
-            src={streetViewEmbedUrl}
-            style={{
-              width: '100%',
-              height: 220,
-              border: 'none',
-              borderRadius: 'var(--radius-lg)',
-              display: 'block',
-            }}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-            onError={() => {
-              if (fallbackRef.current) fallbackRef.current.style.display = 'flex'
-            }}
-          />
-        )}
-        <div
-          ref={fallbackRef}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            height: 100,
-            display: streetViewEmbedUrl ? 'none' : 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            color: 'var(--text-muted)',
-            fontSize: 12,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span>Property view unavailable</span>
-        </div>
+        <StreetView address={fullAddress} />
       </div>
 
       {/* 3. Property Details | Distress Indicators */}
