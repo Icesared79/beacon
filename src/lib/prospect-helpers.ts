@@ -123,31 +123,27 @@ export function getDaysInDistress(p: Prospect): number | null {
 
 // ── Entity name filter ──
 
-const ENTITY_KEYWORDS = [
-  'LLC', ' LP ', ' LP,', ' INC', ' CORP', 'HOLDINGS', 'RENTALS',
-  'GROUP', 'PROPERTIES', 'ASSOCIATES', 'INVESTMENTS', 'MANAGEMENT',
-  'REALTY', 'VENTURES', ' LTD', 'PARTNERS', 'PARTNERSHIP',
-  'COMPANY', 'ENTERPRISES', 'DEVELOPMENT', 'SERVICES',
-  'CAPITAL', 'FUNDING', 'ACQUISITIONS', 'COMMERCIAL',
-  'LLLP', 'REIT', 'LEASING',
-  // Fix 3: additional institutional patterns
-  'AUTHORITY', 'HOUSING AUTH', 'ASSOCIATION', 'FOUNDATION',
-  'PARISH', 'CHURCH', 'SCHOOL DISTRICT', 'CITY OF', 'STATE OF',
-  'COUNTY OF', 'GOVERNMENT', 'MUNICIPAL', 'TOWNSHIP', 'TRANSIT',
-  'DISTRICT', 'KOLLEL', 'BIBLE', 'MINISTRY',
-];
+const ENTITY_PATTERNS = /\b(LLC|LP|LLP|INC|CORP|CORPORATION|CO\.|COMPANY|APARTMENTS|HOUSING|AUTHORITY|REALTY|DEVELOPMENT|FUND|ASSOCIATION|FOUNDATION|PARISH|CHURCH|PROPERTIES|HOLDINGS|VENTURES|GROUP|PARTNERS|MANAGEMENT|SERVICES|ENTERPRISES|SOLUTIONS|SYSTEMS|INDUSTRIES|RENTALS|ASSOCIATES|INVESTMENTS|CAPITAL|FUNDING|ACQUISITIONS|COMMERCIAL|LLLP|REIT|LEASING|PARTNERSHIP|LTD|SCHOOL\s+DISTRICT|CITY\s+OF|STATE\s+OF|COUNTY\s+OF|GOVERNMENT|MUNICIPAL|TOWNSHIP|TRANSIT|DISTRICT|KOLLEL|BIBLE|MINISTRY)\b/i;
+
+const STARTS_WITH_NUMBER = /^\d/;
 
 /** Returns true if the owner name looks like a business entity, not an individual.
  *  TRUST is only flagged if not preceded by a personal name (2+ words before it). */
 export function isEntityOwner(ownerName: string): boolean {
-  if (!ownerName) return false;
-  const upper = ownerName.toUpperCase();
-  if (ENTITY_KEYWORDS.some(kw => upper.includes(kw))) return true;
+  // Null, undefined, or empty — exclude
+  if (!ownerName || !ownerName.trim()) return true;
+  const trimmed = ownerName.trim();
+  // Too short to be a real person name
+  if (trimmed.length < 4) return true;
+  // Starts with a number — likely a business entity (e.g. "242 Nevins, Inc.")
+  if (STARTS_WITH_NUMBER.test(trimmed)) return true;
+  // Regex match against known entity keywords
+  if (ENTITY_PATTERNS.test(trimmed)) return true;
   // TRUST check — allow "John Smith Trust" but reject "Family Trust", "The Trust"
-  if (upper.includes('TRUST')) {
-    const parts = ownerName.trim().split(/\s+/);
+  if (/\bTRUST\b/i.test(trimmed)) {
+    const parts = trimmed.split(/\s+/);
     const trustIdx = parts.findIndex(p => /^trust$/i.test(p));
-    if (trustIdx < 2) return true; // fewer than 2 words before TRUST → entity
+    if (trustIdx < 2) return true;
   }
   return false;
 }
