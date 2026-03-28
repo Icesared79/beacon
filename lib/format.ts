@@ -26,53 +26,65 @@ export function formatSalePrice(price: number | null | undefined): string {
   return formatCurrency(price)
 }
 
+export function formatAddress(address: string): string {
+  return address.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim()
+}
+
 export function titleCase(str: string | null | undefined): string {
   if (!str) return ''
   return str
+    .trim()
     .toLowerCase()
-    .split(' ')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-const ENTITY_PATTERNS = [
-  /\bLLC\b/i,
-  /\bINC\b/i,
-  /\bCORP\b/i,
-  /\bAUTHORITY\b/i,
-  /\bHOUSING AUTH\b/i,
-  /\bASSOCIATION\b/i,
-  /\bFOUNDATION\b/i,
-  /\bCHURCH\b/i,
-  /\bPARISH\b/i,
-]
+export { isEntityName } from '@/lib/format-name'
+export { formatOwnerName } from '@/lib/format-name'
 
-export function isEntity(name: string | null | undefined): boolean {
-  if (!name) return true
-  return ENTITY_PATTERNS.some((p) => p.test(name))
-}
-
-export function isFilteredOut(h: {
-  owner_name: string | null
-  assessed_value: number | null
-  estimated_equity: number | null
-}): boolean {
-  if (!h.owner_name) return true
-  if (isEntity(h.owner_name)) return true
-  if (h.assessed_value != null && h.assessed_value < 5000) return true
-  if (h.estimated_equity != null && h.estimated_equity <= 0) return true
-  return false
+const SIGNAL_NAMES: Record<string, string> = {
+  hmda_loan_denial: 'HMDA Loan Denial',
+  'hmda loan denial': 'HMDA Loan Denial',
+  high_vacancy: 'High Vacancy',
+  'high vacancy': 'High Vacancy',
+  tax_lien: 'Tax Lien',
+  tax_delinquency: 'Tax Delinquency',
+  foreclosure: 'Foreclosure',
+  bankruptcy: 'Bankruptcy',
+  probate: 'Probate',
+  high_equity: 'High Equity',
+  high_equity_confirmed: 'High Equity',
+  long_hold_confirmed: 'Long Hold',
+  distress_flagged: 'Distress Flagged',
 }
 
 export function signalLabel(code: string): string {
+  if (SIGNAL_NAMES[code]) return SIGNAL_NAMES[code]
   return code
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-export function signalColor(code: string): 'red' | 'amber' | 'blue' {
+const SEVERITY_LABELS: Record<string, string> = {
+  distress: 'Distress',
+  property: 'Property',
+  financial: 'Financial',
+  critical: 'Critical',
+  high: 'High',
+  moderate: 'Moderate',
+  low: 'Low',
+  warning: 'Warning',
+}
+
+export function severityLabel(raw: string): string {
+  return SEVERITY_LABELS[raw.toLowerCase()] || titleCase(raw)
+}
+
+export type SignalBadgeColor = 'red' | 'amber' | 'teal' | 'blue'
+
+export function signalBadgeColor(code: string): SignalBadgeColor {
   if (/foreclosure|tax.?lien|distress/i.test(code)) return 'red'
   if (/bankruptcy|probate|delinquen/i.test(code)) return 'amber'
+  if (/vacancy|high.?equity/i.test(code)) return 'teal'
   return 'blue'
 }
 
@@ -80,4 +92,19 @@ export function priorityGroup(score: number, hasDistress: boolean): 'critical' |
   if (score >= 70 && hasDistress) return 'critical'
   if (score >= 50) return 'high'
   return 'monitor'
+}
+
+export function formatDistressDuration(dateStr: string | null): string {
+  if (!dateStr) return '—'
+  const days = Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
+  )
+  if (days < 1) return '<1d'
+  if (days < 30) return `${days}d`
+  if (days < 365) {
+    const months = Math.floor(days / 30)
+    return `${months}mo`
+  }
+  const years = Math.floor(days / 365)
+  return `${years}y`
 }

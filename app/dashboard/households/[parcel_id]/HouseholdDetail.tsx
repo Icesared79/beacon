@@ -3,18 +3,31 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { HouseholdDetail as HouseholdDetailType } from '@/lib/atlas-api'
+import { formatOwnerName } from '@/lib/format-name'
 import {
   formatCurrency,
   formatSalePrice,
+  formatAddress,
   signalLabel,
-  signalColor,
+  signalBadgeColor,
+  severityLabel,
   titleCase,
 } from '@/lib/format'
 
-function riskLevel(score: number, hasDistress: boolean): { label: string; color: string } {
-  if (score >= 70 && hasDistress) return { label: 'Urgent', color: 'bg-red-100 text-red-700' }
-  if (score >= 50) return { label: 'High Need', color: 'bg-amber-100 text-amber-700' }
-  return { label: 'Moderate', color: 'bg-blue-100 text-blue-700' }
+function badgeStyle(color: ReturnType<typeof signalBadgeColor>) {
+  const map = {
+    red: { background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)' },
+    amber: { background: 'var(--badge-amber-bg)', color: 'var(--badge-amber-text)', border: '1px solid var(--badge-amber-border)' },
+    teal: { background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--badge-teal-border)' },
+    blue: { background: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)', border: '1px solid var(--badge-blue-border)' },
+  }
+  return map[color]
+}
+
+function riskBadge(score: number, hasDistress: boolean) {
+  if (score >= 70 && hasDistress) return { label: 'Urgent', ...badgeStyle('red') }
+  if (score >= 50) return { label: 'High Need', ...badgeStyle('amber') }
+  return { label: 'Moderate', ...badgeStyle('blue') }
 }
 
 function deriveService(codes: string[]): string {
@@ -25,54 +38,90 @@ function deriveService(codes: string[]): string {
   return 'General Counseling'
 }
 
+const panel: React.CSSProperties = {
+  background: 'var(--bg-surface)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-lg)',
+  padding: '20px 24px',
+  transition: 'background-color 0.15s ease, border-color 0.15s ease',
+}
+
+const sectionLabel: React.CSSProperties = {
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: 'var(--text-muted)',
+  fontWeight: 600,
+  marginBottom: 16,
+}
+
 export function HouseholdDetail({ household: h }: { household: HouseholdDetailType }) {
   const [notes, setNotes] = useState('')
   const [savedNotes, setSavedNotes] = useState<string[]>([])
   const [status, setStatus] = useState('new')
   const [counselor, setCounselor] = useState('')
 
-  const risk = riskLevel(h.compound_score, h.has_distress)
-  const fullAddress = `${titleCase(h.address)}, ${titleCase(h.city)}, ${h.state} ${h.zip}`
+  const risk = riskBadge(h.compound_score, h.has_distress)
+  const rawAddr = `${titleCase(h.address)}, ${titleCase(h.city)}, ${h.state} ${h.zip}`
+  const fullAddress = formatAddress(rawAddr)
   const yearsHeld = h.years_held ?? null
   const ownerSince = yearsHeld ? `${new Date().getFullYear() - yearsHeld}` : null
-  const streetViewUrl = `https://www.google.com/maps/embed/v1/streetview?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&location=${encodeURIComponent(fullAddress)}`
-
   const signals = h.signals ?? []
+  const hasDoubleComma = rawAddr.includes(',,') || rawAddr.includes(', ,')
+  const showStreetView = !hasDoubleComma
+
+  // Dates for distress indicators
+  const firstDate = h.first_signal_date ? new Date(h.first_signal_date).toLocaleDateString() : null
+  const lastSignalDate = signals.length > 0
+    ? new Date(Math.max(...signals.map((s) => new Date(s.detected_at).getTime()))).toLocaleDateString()
+    : null
+  const showMostRecent = lastSignalDate && lastSignalDate !== firstDate
 
   return (
     <div>
       {/* Back link */}
-      <Link
-        href="/dashboard/households"
-        className="inline-flex items-center gap-1 text-sm text-[var(--beacon-primary)] hover:underline mb-4"
-      >
-        ← Back to Households
+      <Link href="/dashboard/households" style={{ fontSize: 12, color: 'var(--accent-blue-text)', textDecoration: 'none', display: 'inline-block', marginBottom: 16 }}>
+        ← Households
       </Link>
 
       {/* Header card */}
-      <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div style={{ ...panel, borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid var(--border-subtle)', padding: 24, marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1 className="text-xl font-bold text-[var(--beacon-text)]">{fullAddress}</h1>
-            <p className="text-sm text-[var(--beacon-text-muted)] mt-1">
-              {titleCase(h.owner_name || 'Unknown Owner')}
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{fullAddress}</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>
+              {formatOwnerName(h.owner_name || 'Unknown Owner')}
             </p>
             {ownerSince && (
-              <p className="text-xs text-[var(--beacon-text-muted)] mt-1">
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                 Owned since ~{ownerSince} ({yearsHeld} years)
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${risk.color}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{
+              ...risk,
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-sm)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}>
               {risk.label}
             </span>
             <button
               onClick={() => window.print()}
-              className="p-2 rounded-md border border-[var(--beacon-border)] text-[var(--beacon-text-muted)] hover:bg-[var(--beacon-surface-alt)]"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: 4,
+              }}
               title="Print"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
             </button>
@@ -81,27 +130,43 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
       </div>
 
       {/* Street View */}
-      <div className="rounded-lg overflow-hidden mb-6 h-[200px] bg-[var(--beacon-surface-alt)]">
-        <iframe
-          src={streetViewUrl}
-          className="w-full h-full border-0"
-          loading="lazy"
-          allowFullScreen
-          onError={(e) => {
-            const el = e.currentTarget
-            el.style.display = 'none'
-          }}
-        />
-      </div>
+      {showStreetView ? (
+        <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', overflow: 'hidden', marginBottom: 24, maxHeight: 220 }}>
+          <iframe
+            src={`https://www.google.com/maps/embed/v1/streetview?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&location=${encodeURIComponent(fullAddress)}`}
+            style={{ width: '100%', height: 220, border: 'none' }}
+            loading="lazy"
+            allowFullScreen
+          />
+        </div>
+      ) : (
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-lg)',
+          height: 120,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          color: 'var(--text-muted)',
+          fontSize: 12,
+          marginBottom: 24,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span>Street view unavailable for this address</span>
+        </div>
+      )}
 
-      {/* Two column: Property Details + Distress Indicators */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Two-column: Property Details + Distress Indicators */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Property Details */}
-        <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-            Property Details
-          </h2>
-          <dl className="space-y-3">
+        <div style={panel}>
+          <div style={sectionLabel}>Property Details</div>
+          <dl style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <DetailRow label="Assessed Value" value={formatCurrency(h.assessed_value)} />
             <DetailRow label="Estimated Equity" value={formatCurrency(h.estimated_equity)} />
             <DetailRow label="Last Sale" value={formatSalePrice(h.last_sale_price)} />
@@ -111,74 +176,79 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
 
         {/* Distress Indicators */}
-        <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-            Distress Indicators
-          </h2>
+        <div style={panel}>
+          <div style={sectionLabel}>Distress Indicators</div>
           {h.signal_codes.length === 0 ? (
-            <p className="text-sm text-[var(--beacon-text-muted)]">No signals detected</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No signals detected</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {h.signal_codes.map((code) => {
-                const color = signalColor(code)
+                const color = signalBadgeColor(code)
                 const signal = signals.find((s) => s.code === code)
-                const bg =
-                  color === 'red'
-                    ? 'bg-red-100 text-red-700'
-                    : color === 'amber'
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-blue-100 text-blue-700'
                 return (
-                  <div key={code} className="flex items-start gap-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${bg}`}>
+                  <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      ...badgeStyle(color),
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                    }}>
                       {signalLabel(code)}
                     </span>
                     {signal?.detected_at && (
-                      <span className="text-xs text-[var(--beacon-text-muted)]">
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         Detected {new Date(signal.detected_at).toLocaleDateString()}
                       </span>
                     )}
                   </div>
                 )
               })}
-              {h.first_signal_date && (
-                <p className="text-xs text-[var(--beacon-text-muted)] pt-2 border-t border-[var(--beacon-border)]">
-                  First detected: {new Date(h.first_signal_date).toLocaleDateString()}
-                </p>
-              )}
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 8, marginTop: 4 }}>
+                {firstDate && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>First detected: {firstDate}</div>
+                )}
+                {showMostRecent && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Most recent: {lastSignalDate}</div>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Three column intelligence panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      {/* Three-column intelligence panel */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Hardship Timeline */}
-        <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-            Hardship Timeline
-          </h2>
+        <div style={panel}>
+          <div style={sectionLabel}>Hardship Timeline</div>
           {signals.length > 0 ? (
-            <div className="space-y-3">
-              {signals
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[...signals]
                 .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())
                 .map((s, i) => {
-                  const color = signalColor(s.code)
-                  const bg =
-                    color === 'red'
-                      ? 'bg-red-100 text-red-700'
-                      : color === 'amber'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-blue-100 text-blue-700'
+                  const color = signalBadgeColor(s.code)
                   return (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="text-xs text-[var(--beacon-text-muted)] shrink-0 w-20">
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, width: 72 }}>
                         {new Date(s.detected_at).toLocaleDateString()}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${bg}`}>
-                        {s.category}
+                      <span style={{
+                        ...badgeStyle(color),
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-sm)',
+                        textTransform: 'uppercase',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}>
+                        {severityLabel(s.category)}
                       </span>
-                      <span className="text-xs text-[var(--beacon-text-secondary)]">
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                         {s.label || signalLabel(s.code)}
                       </span>
                     </div>
@@ -186,32 +256,26 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
                 })}
             </div>
           ) : h.signal_codes.length > 0 ? (
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {h.signal_codes.map((code) => (
-                <div key={code} className="flex items-center gap-2">
-                  <SignalDot code={code} />
-                  <span className="text-xs text-[var(--beacon-text-secondary)]">
-                    {signalLabel(code)}
-                  </span>
+                <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: `var(--accent-${signalBadgeColor(code) === 'red' ? 'red' : signalBadgeColor(code) === 'amber' ? 'amber' : signalBadgeColor(code) === 'teal' ? 'teal' : 'blue'})` }} />
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{signalLabel(code)}</span>
                 </div>
               ))}
-              {h.first_signal_date && (
-                <p className="text-xs text-[var(--beacon-text-muted)] mt-2">
-                  First detected: {new Date(h.first_signal_date).toLocaleDateString()}
-                </p>
+              {firstDate && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>First detected: {firstDate}</div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-[var(--beacon-text-muted)]">No signals detected</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No signals detected</p>
           )}
         </div>
 
         {/* Equity Position */}
-        <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-            Equity Position
-          </h2>
-          <dl className="space-y-3">
+        <div style={panel}>
+          <div style={sectionLabel}>Equity Position</div>
+          <dl style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <DetailRow label="Assessed Value" value={formatCurrency(h.assessed_value)} />
             <DetailRow label="Estimated Equity" value={formatCurrency(h.estimated_equity)} />
             <DetailRow label="Last Sale Price" value={formatSalePrice(h.last_sale_price)} />
@@ -221,30 +285,36 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
 
         {/* Action Intelligence */}
-        <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-            Action Intelligence
-          </h2>
-          <dl className="space-y-3 mb-4">
+        <div style={panel}>
+          <div style={sectionLabel}>Action Intelligence</div>
+          <dl style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
             <DetailRow label="Service Category" value={deriveService(h.signal_codes)} />
-            <DetailRow label="Suggested Service" value={h.suggested_service || '—'} />
             <DetailRow label="Need Score" value={String(h.compound_score)} />
           </dl>
-          <div className="pt-3 border-t border-[var(--beacon-border)]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-2">
-              Contact Information
-            </p>
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
+            <div style={sectionLabel}>Contact Information</div>
             {h.owner_mailing_address ? (
-              <p className="text-xs text-[var(--beacon-text-secondary)]">
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
                 {h.owner_mailing_address}
                 {h.owner_city && `, ${h.owner_city}`}
                 {h.owner_state && `, ${h.owner_state}`}
                 {h.owner_zip && ` ${h.owner_zip}`}
               </p>
             ) : (
-              <p className="text-xs text-[var(--beacon-text-muted)]">No mailing address on file</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>No mailing address on file</p>
             )}
-            <button className="mt-3 w-full px-3 py-2 text-xs font-medium border border-[var(--beacon-border)] rounded-md text-[var(--beacon-text-secondary)] hover:bg-[var(--beacon-surface-alt)]">
+            <button style={{
+              marginTop: 12,
+              width: '100%',
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 500,
+              background: 'transparent',
+              border: '1px solid var(--border-default)',
+              color: 'var(--accent-blue-text)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+            }}>
               Look Up Contact
             </button>
           </div>
@@ -252,26 +322,36 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
       </div>
 
       {/* Counselor Notes */}
-      <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-          Counselor Notes
-        </h2>
+      <div style={{ ...panel, marginBottom: 16 }}>
+        <div style={sectionLabel}>Counselor Notes</div>
         {savedNotes.length > 0 ? (
-          <div className="space-y-2 mb-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
             {savedNotes.map((n, i) => (
-              <div key={i} className="p-3 bg-[var(--beacon-surface-alt)] rounded text-sm text-[var(--beacon-text-secondary)]">
+              <div key={i} style={{ padding: 12, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', fontSize: 13, color: 'var(--text-secondary)' }}>
                 {n}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--beacon-text-muted)] mb-4">No notes yet</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>No notes yet</p>
         )}
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add a note about this household..."
-          className="w-full px-3 py-2 text-sm border border-[var(--beacon-border)] rounded-lg bg-[var(--beacon-surface)] text-[var(--beacon-text)] resize-none h-20 focus:outline-none focus:ring-2 focus:ring-[var(--beacon-primary)]/30"
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            fontSize: 13,
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-sans)',
+            resize: 'none',
+            height: 80,
+            outline: 'none',
+          }}
         />
         <button
           onClick={() => {
@@ -280,26 +360,43 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
               setNotes('')
             }
           }}
-          className="mt-2 px-4 py-2 text-sm font-medium border border-[var(--beacon-border)] rounded-md text-[var(--beacon-text-secondary)] hover:bg-[var(--beacon-surface-alt)]"
+          style={{
+            marginTop: 8,
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            background: 'var(--accent-blue)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 'var(--radius-md)',
+            cursor: 'pointer',
+          }}
         >
           Add Note
         </button>
       </div>
 
       {/* Status and Assignment */}
-      <div className="bg-[var(--beacon-surface)] rounded-lg p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-4">
-          Status & Assignment
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div style={panel}>
+        <div style={sectionLabel}>Status & Assignment</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
           <div>
-            <label className="block text-xs font-medium text-[var(--beacon-text-muted)] mb-1">
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>
               Current Status
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--beacon-border)] bg-[var(--beacon-surface)] text-[var(--beacon-text)]"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: 13,
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+              }}
             >
               <option value="new">New</option>
               <option value="reviewing">Reviewing</option>
@@ -309,13 +406,22 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--beacon-text-muted)] mb-1">
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>
               Assigned Counselor
             </label>
             <select
               value={counselor}
               onChange={(e) => setCounselor(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--beacon-border)] bg-[var(--beacon-surface)] text-[var(--beacon-text)]"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: 13,
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+              }}
             >
               <option value="">Unassigned</option>
               <option value="counselor1">Counselor 1</option>
@@ -323,16 +429,26 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             </select>
           </div>
         </div>
-        <button className="w-full py-2.5 rounded-lg text-sm font-semibold bg-[var(--beacon-high)] text-white hover:opacity-90 transition-colors">
+        <button style={{
+          width: '100%',
+          padding: '10px 0',
+          fontSize: 14,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          background: 'var(--accent-amber)',
+          color: '#0f172a',
+          border: 'none',
+          borderRadius: 'var(--radius-md)',
+          cursor: 'pointer',
+        }}>
           Flag for Counseling
         </button>
-        <div className="mt-4 pt-4 border-t border-[var(--beacon-border)]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--beacon-text-muted)] mb-2">
-            Activity Log
-          </p>
-          <p className="text-sm text-[var(--beacon-text-muted)] text-center py-4">
+        <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 16, paddingTop: 12 }}>
+          <div style={sectionLabel}>Activity Log</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
             No activity recorded yet
-          </p>
+          </div>
         </div>
       </div>
     </div>
@@ -341,16 +457,9 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <dt className="text-xs text-[var(--beacon-text-muted)]">{label}</dt>
-      <dd className="text-sm font-medium text-[var(--beacon-text)]">{value}</dd>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <dt style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</dt>
+      <dd style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{value}</dd>
     </div>
   )
-}
-
-function SignalDot({ code }: { code: string }) {
-  const color = signalColor(code)
-  const bg =
-    color === 'red' ? 'bg-red-500' : color === 'amber' ? 'bg-amber-500' : 'bg-blue-500'
-  return <span className={`inline-block w-2 h-2 rounded-full ${bg}`} />
 }

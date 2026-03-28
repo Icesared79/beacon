@@ -2,27 +2,70 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BeaconLogo } from './BeaconLogo'
+import { ThemeToggle } from './ThemeToggle'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: '◈' },
-  { href: '/dashboard/households', label: 'Households', icon: '◉' },
-  { href: '/dashboard/coverage', label: 'Coverage', icon: '◎' },
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard/households', label: 'Households' },
+  { href: '/dashboard/coverage', label: 'Coverage' },
 ]
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  lastUpdated,
+}: {
+  children: React.ReactNode
+  lastUpdated?: string
+}) {
   const pathname = usePathname()
 
+  const formattedDate = lastUpdated
+    ? new Date(lastUpdated).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null
+
   return (
-    <div className="min-h-screen bg-[var(--beacon-bg)]">
-      {/* Top nav */}
-      <header className="bg-[var(--beacon-surface)] border-b border-[var(--beacon-border)] px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <BeaconLogo className="h-7 w-7" color="var(--beacon-primary)" />
-            <span className="font-semibold text-[var(--beacon-text)] text-lg tracking-tight">Beacon</span>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
+      {/* Topbar */}
+      <header
+        style={{
+          height: 'var(--topbar-height)',
+          background: 'var(--bg-surface)',
+          borderBottom: '1px solid var(--border-subtle)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          transition: 'background-color 0.15s ease, border-color 0.15s ease',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'var(--accent-blue)',
+                display: 'inline-block',
+              }}
+            />
+            <span
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                color: 'var(--text-primary)',
+              }}
+            >
+              BEACON
+            </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-1">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             {navItems.map((item) => {
               const isActive =
                 item.href === '/dashboard'
@@ -32,11 +75,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-[var(--beacon-primary-muted)] text-[var(--beacon-primary)]'
-                      : 'text-[var(--beacon-text-secondary)] hover:text-[var(--beacon-text)] hover:bg-[var(--beacon-surface-alt)]'
-                  }`}
+                  style={{
+                    fontSize: 12,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    fontWeight: 500,
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                    background: isActive ? 'var(--bg-elevated)' : 'transparent',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '5px 10px',
+                    textDecoration: 'none',
+                    transition: 'color 0.15s ease, background 0.15s ease',
+                  }}
                 >
                   {item.label}
                 </Link>
@@ -44,11 +94,46 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </div>
-        <div className="text-xs text-[var(--beacon-text-muted)]">ACCC Staff Portal</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          <ThemeToggle />
+          {formattedDate && (
+            <>
+              <div
+                style={{
+                  width: 1,
+                  height: 16,
+                  background: 'var(--border-subtle)',
+                  margin: '0 12px',
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 11,
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.03em',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'var(--accent-teal)',
+                    display: 'inline-block',
+                  }}
+                />
+                Atlas data · Updated {formattedDate}
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Content */}
-      <main className="p-6 max-w-[1400px] mx-auto">{children}</main>
+      <main style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>{children}</main>
     </div>
   )
 }

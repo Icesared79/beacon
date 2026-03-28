@@ -1,16 +1,17 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Household, Schema } from '@/lib/atlas-api'
-import { AtlasStatus } from '@/components/AtlasStatus'
+import { isEntityName, formatOwnerName } from '@/lib/format-name'
 import {
   formatCurrency,
-  isFilteredOut,
+  formatAddress,
   signalLabel,
-  signalColor,
+  signalBadgeColor,
   priorityGroup,
   titleCase,
+  formatDistressDuration,
 } from '@/lib/format'
 
 interface Props {
@@ -26,40 +27,33 @@ const EQUITY_RANGES = [
   { label: 'Over $1M', min: 1_000_000, max: Infinity },
 ]
 
-function SignalBadge({ code }: { code: string }) {
-  const color = signalColor(code)
-  const bg =
-    color === 'red'
-      ? 'bg-red-100 text-red-700'
-      : color === 'amber'
-        ? 'bg-amber-100 text-amber-700'
-        : 'bg-blue-100 text-blue-700'
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${bg}`}>
-      {signalLabel(code)}
-    </span>
-  )
+function badgeStyle(color: ReturnType<typeof signalBadgeColor>) {
+  const map = {
+    red: { background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)' },
+    amber: { background: 'var(--badge-amber-bg)', color: 'var(--badge-amber-text)', border: '1px solid var(--badge-amber-border)' },
+    teal: { background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--badge-teal-border)' },
+    blue: { background: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)', border: '1px solid var(--badge-blue-border)' },
+  }
+  return map[color]
 }
 
-function timeSinceSignal(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  const days = Math.floor(
-    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
-  )
-  if (days < 1) return 'Today'
-  if (days === 1) return '1 day'
-  if (days < 30) return `${days} days`
-  const months = Math.floor(days / 30)
-  return months === 1 ? '1 month' : `${months} months`
+function isRowFiltered(h: { owner_name: string | null; assessed_value: number | null; estimated_equity: number | null }): boolean {
+  if (!h.owner_name) return true
+  if (isEntityName(h.owner_name)) return true
+  if (h.assessed_value != null && h.assessed_value < 5000) return true
+  if (h.estimated_equity != null && h.estimated_equity <= 0) return true
+  return false
 }
 
 export function HouseholdsList({ initialHouseholds, schema }: Props) {
+  const router = useRouter()
   const [stateFilter, setStateFilter] = useState('')
   const [signalFilter, setSignalFilter] = useState('')
   const [equityIdx, setEquityIdx] = useState(0)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   const cleanHouseholds = useMemo(
-    () => initialHouseholds.filter((h) => !isFilteredOut(h)),
+    () => initialHouseholds.filter((h) => !isRowFiltered(h)),
     [initialHouseholds]
   )
 
@@ -70,10 +64,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
     const eq = EQUITY_RANGES[equityIdx]
     if (equityIdx > 0) {
       list = list.filter(
-        (h) =>
-          h.estimated_equity != null &&
-          h.estimated_equity >= eq.min &&
-          h.estimated_equity < eq.max
+        (h) => h.estimated_equity != null && h.estimated_equity >= eq.min && h.estimated_equity < eq.max
       )
     }
     return list
@@ -93,113 +84,116 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
   }, [filtered])
 
   const activeFilters: { label: string; clear: () => void }[] = []
-  if (stateFilter)
-    activeFilters.push({ label: `State: ${stateFilter}`, clear: () => setStateFilter('') })
-  if (signalFilter)
-    activeFilters.push({
-      label: `Signal: ${signalLabel(signalFilter)}`,
-      clear: () => setSignalFilter(''),
-    })
-  if (equityIdx > 0)
-    activeFilters.push({
-      label: `Equity: ${EQUITY_RANGES[equityIdx].label}`,
-      clear: () => setEquityIdx(0),
-    })
+  if (stateFilter) activeFilters.push({ label: `State: ${stateFilter}`, clear: () => setStateFilter('') })
+  if (signalFilter) activeFilters.push({ label: `Signal: ${signalLabel(signalFilter)}`, clear: () => setSignalFilter('') })
+  if (equityIdx > 0) activeFilters.push({ label: `Equity: ${EQUITY_RANGES[equityIdx].label}`, clear: () => setEquityIdx(0) })
 
   const stateCount = new Set(filtered.map((h) => h.state)).size
 
+  const selectStyle: React.CSSProperties = {
+    padding: '6px 12px',
+    fontSize: 12,
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border-subtle)',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    outline: 'none',
+  }
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--beacon-text)]">Households</h1>
-          <p className="text-sm text-[var(--beacon-text-secondary)]">
+      {/* Page header */}
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: 14, marginBottom: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', margin: 0 }}>
+            Households
+          </h1>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             {filtered.length.toLocaleString()} households across {stateCount} states
-          </p>
+          </span>
         </div>
-        <AtlasStatus lastUpdated={schema.last_updated} />
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <select
-          value={stateFilter}
-          onChange={(e) => setStateFilter(e.target.value)}
-          className="px-3 py-2 text-sm rounded-lg border border-[var(--beacon-border)] bg-[var(--beacon-surface)] text-[var(--beacon-text)]"
-        >
-          <option value="">All States</option>
-          {schema.states_covered.map((s) => (
-            <option key={s.state} value={s.state}>
-              {s.state} ({s.households.toLocaleString()})
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={signalFilter}
-          onChange={(e) => setSignalFilter(e.target.value)}
-          className="px-3 py-2 text-sm rounded-lg border border-[var(--beacon-border)] bg-[var(--beacon-surface)] text-[var(--beacon-text)]"
-        >
-          <option value="">All Indicators</option>
-          {schema.signal_types.map((s) => (
-            <option key={s.code} value={s.code}>
-              {signalLabel(s.code)} ({s.signal_count.toLocaleString()})
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={equityIdx}
-          onChange={(e) => setEquityIdx(Number(e.target.value))}
-          className="px-3 py-2 text-sm rounded-lg border border-[var(--beacon-border)] bg-[var(--beacon-surface)] text-[var(--beacon-text)]"
-        >
-          {EQUITY_RANGES.map((r, i) => (
-            <option key={i} value={i}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Active filter pills */}
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {activeFilters.map((f) => (
-            <button
-              key={f.label}
-              onClick={f.clear}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--beacon-primary-muted)] text-[var(--beacon-primary)] text-xs font-medium"
-            >
-              {f.label}
-              <span className="ml-1 text-[var(--beacon-primary)]">×</span>
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} style={selectStyle}>
+            <option value="">All States</option>
+            {schema.states_covered.map((s) => (
+              <option key={s.state} value={s.state}>{s.state} ({s.households.toLocaleString()})</option>
+            ))}
+          </select>
+          <select value={signalFilter} onChange={(e) => setSignalFilter(e.target.value)} style={selectStyle}>
+            <option value="">All Indicators</option>
+            {schema.signal_types.map((s) => (
+              <option key={s.code} value={s.code}>{signalLabel(s.code)} ({s.signal_count.toLocaleString()})</option>
+            ))}
+          </select>
+          <select value={equityIdx} onChange={(e) => setEquityIdx(Number(e.target.value))} style={selectStyle}>
+            {EQUITY_RANGES.map((r, i) => (
+              <option key={i} value={i}>{r.label}</option>
+            ))}
+          </select>
         </div>
-      )}
+        {activeFilters.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {activeFilters.map((f) => (
+              <button
+                key={f.label}
+                onClick={f.clear}
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--accent-blue-text)',
+                  fontSize: 11,
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '3px 10px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                {f.label} <span style={{ fontSize: 13 }}>×</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Priority groups */}
       <PriorityGroup
-        label="Critical"
+        id="critical"
+        label="CRITICAL"
         description="Active foreclosure or tax lien — immediate outreach"
-        borderColor="border-[var(--beacon-critical)]"
+        accentColor="var(--accent-red)"
+        labelColor="var(--accent-red-text)"
         items={groups.critical}
+        collapsed={collapsed.critical}
+        onToggle={() => setCollapsed((p) => ({ ...p, critical: !p.critical }))}
+        onNavigate={(id) => router.push(`/dashboard/households/${encodeURIComponent(id)}`)}
       />
       <PriorityGroup
-        label="High Need"
+        id="high"
+        label="HIGH NEED"
         description="Tax delinquency, bankruptcy, or probate — outreach this week"
-        borderColor="border-[var(--beacon-high)]"
+        accentColor="var(--accent-amber)"
+        labelColor="var(--accent-amber-text)"
         items={groups.high}
+        collapsed={collapsed.high}
+        onToggle={() => setCollapsed((p) => ({ ...p, high: !p.high }))}
+        onNavigate={(id) => router.push(`/dashboard/households/${encodeURIComponent(id)}`)}
       />
       <PriorityGroup
-        label="Monitor"
+        id="monitor"
+        label="MONITOR"
         description="Early distress indicators — watch list"
-        borderColor="border-[var(--beacon-info)]"
+        accentColor="var(--accent-blue)"
+        labelColor="var(--accent-blue-text)"
         items={groups.monitor}
+        collapsed={collapsed.monitor}
+        onToggle={() => setCollapsed((p) => ({ ...p, monitor: !p.monitor }))}
+        onNavigate={(id) => router.push(`/dashboard/households/${encodeURIComponent(id)}`)}
       />
 
       {filtered.length === 0 && (
-        <div className="text-center py-16 text-[var(--beacon-text-muted)] text-sm">
+        <div style={{ textAlign: 'center', padding: '64px 0', fontSize: 12, color: 'var(--text-muted)' }}>
           No households match the current filters.
         </div>
       )}
@@ -208,85 +202,195 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
 }
 
 function PriorityGroup({
+  id,
   label,
   description,
-  borderColor,
+  accentColor,
+  labelColor,
   items,
+  collapsed,
+  onToggle,
+  onNavigate,
 }: {
+  id: string
   label: string
   description: string
-  borderColor: string
+  accentColor: string
+  labelColor: string
   items: Household[]
+  collapsed?: boolean
+  onToggle: () => void
+  onNavigate: (parcelId: string) => void
 }) {
   if (items.length === 0) return null
 
+  const shown = items.slice(0, 50)
+
   return (
-    <div className="mb-6">
-      <div className="flex items-baseline gap-2 mb-2">
-        <h3 className="text-sm font-semibold text-[var(--beacon-text)]">
-          {label} ({items.length.toLocaleString()})
-        </h3>
-        <span className="text-xs text-[var(--beacon-text-muted)]">{description}</span>
+    <div style={{ marginTop: 0 }}>
+      {/* Group header */}
+      <div
+        onClick={onToggle}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 24px',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        <div style={{ width: 3, height: 16, background: accentColor, borderRadius: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: labelColor }}>
+          {label}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+          {items.length.toLocaleString()}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic' }}>
+          {description}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-faint)', marginLeft: 'auto' }}>
+          {collapsed ? '▸' : '▾'}
+        </span>
       </div>
-      <div className="bg-[var(--beacon-surface)] rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
-        {items.slice(0, 50).map((h, i) => (
+
+      {!collapsed && (
+        <div style={{ background: 'var(--bg-surface)', transition: 'background-color 0.15s ease' }}>
+          {/* Column headers */}
           <div
-            key={h.parcel_id}
-            className={`flex items-center gap-4 px-4 py-3 border-l-4 ${borderColor} hover:bg-[var(--beacon-surface-alt)] transition-colors ${
-              i > 0 ? 'border-t border-t-[var(--beacon-border)]' : ''
-            }`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 180px 120px 80px 80px',
+              padding: '7px 24px 7px 40px',
+              borderTop: '1px solid var(--border-subtle)',
+              borderBottom: '1px solid var(--border-subtle)',
+            }}
           >
-            {/* Name + address */}
-            <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-[var(--beacon-text)] truncate">
-                {titleCase(h.owner_name || '')}
-              </p>
-              <p className="text-[13px] text-[var(--beacon-text-muted)] truncate">
-                {titleCase(h.address)}, {titleCase(h.city)}, {h.state} {h.zip}
-              </p>
-            </div>
-
-            {/* Signal badges */}
-            <div className="hidden md:flex items-center gap-1.5 shrink-0">
-              {h.signal_codes.length > 0 && <SignalBadge code={h.signal_codes[0]} />}
-              {h.signal_codes.length > 1 && (
-                <span className="text-[11px] text-[var(--beacon-text-muted)]">
-                  +{h.signal_codes.length - 1} more
-                </span>
-              )}
-            </div>
-
-            {/* Equity */}
-            <div className="hidden lg:block text-right shrink-0 w-28">
-              <p className="text-sm font-medium text-[var(--beacon-text)]">
-                {formatCurrency(h.estimated_equity)}
-              </p>
-              {!h.last_sale_price && h.assessed_value && (
-                <p className="text-[11px] text-[var(--beacon-text-muted)]">Based on assessed value</p>
-              )}
-            </div>
-
-            {/* Time in distress */}
-            <div className="hidden lg:block text-right shrink-0 w-20">
-              <p className="text-xs text-[var(--beacon-text-muted)]">
-                {timeSinceSignal(h.first_signal_date)}
-              </p>
-            </div>
-
-            {/* Review */}
-            <Link
-              href={`/dashboard/households/${encodeURIComponent(h.parcel_id)}`}
-              className="shrink-0 px-3 py-1.5 text-xs font-medium border border-[var(--beacon-border)] rounded-md text-[var(--beacon-text-secondary)] hover:bg-[var(--beacon-surface-alt)] transition-colors"
-            >
-              Review
-            </Link>
+            <span style={colHeaderStyle}>Owner / Address</span>
+            <span style={colHeaderStyle}>Signals</span>
+            <span style={{ ...colHeaderStyle, textAlign: 'right' }}>Equity</span>
+            <span style={{ ...colHeaderStyle, textAlign: 'right' }}>In Distress</span>
+            <span style={colHeaderStyle} />
           </div>
-        ))}
-        {items.length > 50 && (
-          <div className="px-4 py-3 text-xs text-center text-[var(--beacon-text-muted)] border-t border-[var(--beacon-border)]">
-            Showing 50 of {items.length.toLocaleString()} — use filters to narrow results
-          </div>
+
+          {/* Rows */}
+          {shown.map((h, i) => (
+            <HouseholdRow key={h.parcel_id} household={h} index={i} onNavigate={onNavigate} />
+          ))}
+          {items.length > 50 && (
+            <div style={{ padding: '10px 24px', fontSize: 11, textAlign: 'center', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)' }}>
+              Showing 50 of {items.length.toLocaleString()} — use filters to narrow results
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const colHeaderStyle: React.CSSProperties = {
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: 'var(--text-faint)',
+  fontWeight: 600,
+}
+
+function HouseholdRow({
+  household: h,
+  index,
+  onNavigate,
+}: {
+  household: Household
+  index: number
+  onNavigate: (id: string) => void
+}) {
+  const addr = formatAddress(`${titleCase(h.address)}, ${titleCase(h.city)}, ${h.state} ${h.zip}`)
+  const primarySignal = h.signal_codes[0]
+  const extraCount = h.signal_codes.length - 1
+
+  return (
+    <div
+      onClick={() => onNavigate(h.parcel_id)}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 180px 120px 80px 80px',
+        padding: '11px 24px 11px 40px',
+        borderTop: index > 0 ? '1px solid var(--border-subtle)' : undefined,
+        cursor: 'pointer',
+        transition: 'background-color 0.1s ease',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+    >
+      {/* Owner / Address */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {formatOwnerName(h.owner_name || '')}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {addr}
+        </div>
+      </div>
+
+      {/* Signals */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {primarySignal && (
+          <span style={{
+            ...badgeStyle(signalBadgeColor(primarySignal)),
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-sm)',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}>
+            {signalLabel(primarySignal)}
+          </span>
         )}
+        {extraCount > 0 && (
+          <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>+{extraCount} more</span>
+        )}
+      </div>
+
+      {/* Equity */}
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+          {formatCurrency(h.estimated_equity)}
+        </div>
+        {!h.last_sale_price && h.assessed_value && (
+          <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>Based on assessed value</div>
+        )}
+      </div>
+
+      {/* In Distress */}
+      <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+        {formatDistressDuration(h.first_signal_date)}
+      </div>
+
+      {/* Review */}
+      <div style={{ textAlign: 'right' }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onNavigate(h.parcel_id) }}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            background: 'transparent',
+            border: '1px solid var(--border-default)',
+            color: 'var(--accent-blue-text)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '4px 12px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+        >
+          REVIEW
+        </button>
       </div>
     </div>
   )

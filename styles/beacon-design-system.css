@@ -1,0 +1,76 @@
+/* ── Beacon Design System ── */
+
+[data-theme="dark"] {
+  --bg-base: #0d1117;
+  --bg-surface: #0a0f17;
+  --bg-elevated: #111827;
+  --bg-hover: #111827;
+  --border-subtle: #1e2a38;
+  --border-default: #1e3a5f;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --text-faint: #334155;
+  --accent-blue: #2563eb;
+  --accent-blue-text: #60a5fa;
+  --accent-teal: #10b981;
+  --accent-teal-text: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-amber-text: #fcd34d;
+  --accent-red: #ef4444;
+  --accent-red-text: #f87171;
+  --badge-red-bg: rgba(127,29,29,0.35);
+  --badge-red-text: #fca5a5;
+  --badge-red-border: rgba(239,68,68,0.2);
+  --badge-amber-bg: rgba(120,53,15,0.28);
+  --badge-amber-text: #fcd34d;
+  --badge-amber-border: rgba(245,158,11,0.2);
+  --badge-teal-bg: rgba(13,74,58,0.35);
+  --badge-teal-text: #34d399;
+  --badge-teal-border: rgba(16,185,129,0.2);
+  --badge-blue-bg: rgba(30,58,95,0.35);
+  --badge-blue-text: #93c5fd;
+  --badge-blue-border: rgba(59,130,246,0.2);
+}
+
+[data-theme="light"] {
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --bg-hover: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-default: #bfdbfe;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-faint: #cbd5e1;
+  --accent-blue: #2563eb;
+  --accent-blue-text: #1d4ed8;
+  --accent-teal: #059669;
+  --accent-teal-text: #047857;
+  --accent-amber: #d97706;
+  --accent-amber-text: #b45309;
+  --accent-red: #dc2626;
+  --accent-red-text: #b91c1c;
+  --badge-red-bg: #fef2f2;
+  --badge-red-text: #991b1b;
+  --badge-red-border: #fecaca;
+  --badge-amber-bg: #fffbeb;
+  --badge-amber-text: #92400e;
+  --badge-amber-border: #fde68a;
+  --badge-teal-bg: #ecfdf5;
+  --badge-teal-text: #065f46;
+  --badge-teal-border: #a7f3d0;
+  --badge-blue-bg: #eff6ff;
+  --badge-blue-text: #1e40af;
+  --badge-blue-border: #bfdbfe;
+}
+
+:root {
+  --font-sans: 'Inter', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --topbar-height: 48px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+}

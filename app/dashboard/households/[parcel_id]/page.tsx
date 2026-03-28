@@ -1,4 +1,4 @@
-import { fetchHousehold } from '@/lib/atlas-api'
+import { fetchHousehold, fetchStats } from '@/lib/atlas-api'
 import { DashboardShell } from '@/components/DashboardShell'
 import { HouseholdDetail } from './HouseholdDetail'
 
@@ -8,10 +8,13 @@ export default async function HouseholdDetailPage({
   params: Promise<{ parcel_id: string }>
 }) {
   const { parcel_id } = await params
-  const household = await fetchHousehold(decodeURIComponent(parcel_id))
+  const [household, stats] = await Promise.all([
+    fetchHousehold(decodeURIComponent(parcel_id)),
+    fetchStats(),
+  ])
 
   return (
-    <DashboardShell>
+    <DashboardShell lastUpdated={stats.last_updated}>
       <HouseholdDetail household={household} />
     </DashboardShell>
   )
