@@ -18,56 +18,35 @@ const STATE_ABBREV: Record<string, string> = {
   Maryland: 'MD',
 }
 
-function buildStreetViewUrl(
+function cleanAddress(
   address: string | null | undefined,
   city: string | null | undefined,
   state: string | null | undefined,
   zip: string | null | undefined,
-  apiKey: string
 ): string | null {
-  if (!address || !apiKey || !state) return null
+  if (!address || !state) return null
 
-  // Assemble raw address from parts
   const parts: string[] = [address]
   const normalizedState = STATE_ABBREV[state] || state
 
-  // Add city if present and not already baked into address field
   if (city && !address.toUpperCase().includes(city.toUpperCase())) {
     parts.push(city)
   }
 
   parts.push(normalizedState)
 
-  // 5-digit zip only
   if (zip) {
     parts.push(zip.split('-')[0])
   }
 
   let clean = parts.join(', ')
-
-  // Step 1: replace double commas (missing city field)
   clean = clean.replace(/,\s*,/g, ',')
-
-  // Step 2: remove any "null", "undefined", "none" tokens
   clean = clean.replace(/\b(null|undefined|none)\b/gi, '')
-
-  // Step 3: collapse multiple spaces and stray commas at start/end
   clean = clean.replace(/,\s*,/g, ',').replace(/^\s*,|,\s*$/g, '').replace(/\s+/g, ' ').trim()
 
-  // Step 4: must have at least a street number + street name to be valid
   if (clean.length < 10 || !/\d/.test(clean)) return null
 
-  // Step 5: encode for URL
-  const encoded = encodeURIComponent(clean)
-
-  const url = `https://maps.googleapis.com/maps/api/streetview?size=1200x240&location=${encoded}&key=${apiKey}&return_error_codes=true`
-
-  // Debug logging
-  console.log('[StreetView] Raw parts:', { address, city, state, zip })
-  console.log('[StreetView] Cleaned address:', clean)
-  console.log('[StreetView] Final URL:', url)
-
-  return url
+  return clean
 }
 
 export function StreetView({
@@ -82,28 +61,37 @@ export function StreetView({
   zip: string | null
 }) {
   const fallbackRef = useRef<HTMLDivElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 
-  const url = buildStreetViewUrl(address, city, state, zip, apiKey)
+  const clean = cleanAddress(address, city, state, zip)
 
-  if (!url) {
+  if (!clean || !apiKey) {
     return <Fallback />
   }
 
+  const embedUrl = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(clean)}`
+
+  console.log('[StreetView] Cleaned address:', clean)
+  console.log('[StreetView] Embed URL:', embedUrl)
+
   return (
     <div>
-      <img
-        src={url}
-        alt="Street view"
+      <iframe
+        ref={iframeRef}
+        src={embedUrl}
         style={{
           width: '100%',
           height: 220,
-          objectFit: 'cover',
+          border: 'none',
           borderRadius: 'var(--radius-lg)',
           display: 'block',
         }}
-        onError={(e) => {
-          e.currentTarget.style.display = 'none'
+        loading="lazy"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
+        onError={() => {
+          if (iframeRef.current) iframeRef.current.style.display = 'none'
           if (fallbackRef.current) fallbackRef.current.style.display = 'flex'
         }}
       />
