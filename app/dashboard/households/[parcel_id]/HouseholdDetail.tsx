@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { HouseholdDetail as HouseholdDetailType } from '@/lib/atlas-api'
-import { formatOwnerName } from '@/lib/format-name'
+import { formatOwnerName, getSeverityBadgeClass, formatMailingAddress } from '@/lib/format-name'
 import {
   formatCurrency,
   formatSalePrice,
@@ -67,8 +67,6 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
   const yearsHeld = h.years_held ?? null
   const ownerSince = yearsHeld ? `${new Date().getFullYear() - yearsHeld}` : null
   const signals = h.signals ?? []
-  const hasDoubleComma = rawAddr.includes(',,') || rawAddr.includes(', ,')
-  const showStreetView = !hasDoubleComma
 
   // Dates for distress indicators
   const firstDate = h.first_signal_date ? new Date(h.first_signal_date).toLocaleDateString() : null
@@ -129,37 +127,26 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
       </div>
 
-      {/* Street View */}
-      {showStreetView ? (
-        <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', overflow: 'hidden', marginBottom: 24, maxHeight: 220 }}>
-          <iframe
-            src={`https://www.google.com/maps/embed/v1/streetview?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&location=${encodeURIComponent(fullAddress)}`}
-            style={{ width: '100%', height: 220, border: 'none' }}
-            loading="lazy"
-            allowFullScreen
-          />
-        </div>
-      ) : (
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)',
-          height: 120,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          color: 'var(--text-muted)',
-          fontSize: 12,
-          marginBottom: 24,
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span>Street view unavailable for this address</span>
-        </div>
-      )}
+      {/* Property placeholder */}
+      <div style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)',
+        height: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        color: 'var(--text-muted)',
+        fontSize: 12,
+        marginBottom: 24,
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span>Property view unavailable</span>
+      </div>
 
       {/* Two-column: Property Details + Distress Indicators */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -230,14 +217,14 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
               {[...signals]
                 .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())
                 .map((s, i) => {
-                  const color = signalBadgeColor(s.code)
+                  const sevColor = getSeverityBadgeClass(s.category)
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, width: 72 }}>
                         {new Date(s.detected_at).toLocaleDateString()}
                       </span>
                       <span style={{
-                        ...badgeStyle(color),
+                        ...badgeStyle(sevColor),
                         fontSize: 9,
                         fontWeight: 700,
                         padding: '1px 6px',
@@ -289,14 +276,22 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
           <div style={sectionLabel}>Action Intelligence</div>
           <dl style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
             <DetailRow label="Service Category" value={deriveService(h.signal_codes)} />
-            <DetailRow label="Need Score" value={String(h.compound_score)} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <dt style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Need Score</dt>
+              <dd style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                {String(h.compound_score)}
+                {h.compound_score > 100 && (
+                  <span title="Score reflects multiple overlapping distress factors" style={{ fontSize: 14, color: 'var(--text-muted)', cursor: 'help' }}>*</span>
+                )}
+              </dd>
+            </div>
           </dl>
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
             <div style={sectionLabel}>Contact Information</div>
             {h.owner_mailing_address ? (
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-                {h.owner_mailing_address}
-                {h.owner_city && `, ${h.owner_city}`}
+                {formatMailingAddress(h.owner_mailing_address)}
+                {h.owner_city && `, ${formatMailingAddress(h.owner_city)}`}
                 {h.owner_state && `, ${h.owner_state}`}
                 {h.owner_zip && ` ${h.owner_zip}`}
               </p>
