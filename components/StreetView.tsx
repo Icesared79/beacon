@@ -1,5 +1,47 @@
 'use client'
 
+const STATE_ABBREV: Record<string, string> = {
+  Pennsylvania: 'PA',
+  'New York': 'NY',
+  Florida: 'FL',
+  Colorado: 'CO',
+  Georgia: 'GA',
+  Texas: 'TX',
+  California: 'CA',
+  Connecticut: 'CT',
+  Massachusetts: 'MA',
+  'New Jersey': 'NJ',
+  Ohio: 'OH',
+  Illinois: 'IL',
+  Maryland: 'MD',
+}
+
+function normalizeState(state: string): string {
+  return STATE_ABBREV[state] || state
+}
+
+function buildLocation(address: string, city: string | null, state: string, zip: string | null): string {
+  const parts: string[] = []
+
+  // Address field — some have city baked in like "5504 CREEKSTONE CT, LAKELAND"
+  parts.push(address)
+
+  // Only add city if it exists and isn't already in the address
+  if (city && !address.toUpperCase().includes(city.toUpperCase())) {
+    parts.push(city)
+  }
+
+  // State — normalize full names to abbreviations
+  parts.push(normalizeState(state))
+
+  // Zip — use 5-digit only, strip +4 extension
+  if (zip) {
+    parts.push(zip.split('-')[0])
+  }
+
+  return parts.join(', ')
+}
+
 export function StreetView({
   address,
   city,
@@ -7,18 +49,16 @@ export function StreetView({
   zip,
 }: {
   address: string
-  city: string
+  city: string | null
   state: string
-  zip?: string
+  zip: string | null
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
-  if (!apiKey) return <Fallback />
+  if (!apiKey || !address) return <Fallback />
 
-  // Use raw address fields from Atlas — no title-casing, no formatting
-  // Google's geocoder handles uppercase addresses fine
-  const rawLocation = `${address}, ${city}, ${state}${zip ? ' ' + zip : ''}`
-  const embedUrl = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(rawLocation)}&heading=210&pitch=10&fov=90`
+  const location = buildLocation(address, city, state, zip)
+  const embedUrl = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(location)}`
 
   return (
     <iframe
