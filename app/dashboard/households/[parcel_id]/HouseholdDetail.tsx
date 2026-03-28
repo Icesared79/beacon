@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import type { HouseholdDetail as HouseholdDetailType } from '@/lib/atlas-api'
+import { ContactLookup } from '@/components/ContactLookup'
 import { formatOwnerName, getSeverityBadgeClass, formatMailingAddress } from '@/lib/format-name'
 import {
   formatCurrency,
@@ -332,13 +333,14 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             )}
           </div>
         </div>
-        <button style={{
-          marginTop: 14, padding: '8px 12px', fontSize: 12, fontWeight: 500,
-          background: 'transparent', border: '1px solid var(--border-default)',
-          color: 'var(--accent-blue-text)', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-        }}>
-          Look Up Contact
-        </button>
+        <div style={{ marginTop: 14 }}>
+          <ContactLookup
+            address={h.address}
+            city={h.city}
+            state={h.state}
+            zip={h.zip}
+          />
+        </div>
       </div>
 
       {/* 6. Counselor Notes */}
