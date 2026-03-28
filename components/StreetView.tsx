@@ -1,57 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-
-export function StreetView({ address }: { address: string }) {
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [failed, setFailed] = useState(false)
-
+export function StreetView({
+  address,
+  city,
+  state,
+  zip,
+}: {
+  address: string
+  city: string
+  state: string
+  zip?: string
+}) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
-  useEffect(() => {
-    if (!apiKey || !address) {
-      setFailed(true)
-      return
-    }
+  if (!apiKey) return <Fallback />
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
-
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
-          setCoords(data.results[0].geometry.location)
-        } else {
-          setFailed(true)
-        }
-      })
-      .catch(() => setFailed(true))
-  }, [address, apiKey])
-
-  if (failed || !apiKey) {
-    return <Fallback />
-  }
-
-  if (!coords) {
-    // Loading state — subtle placeholder
-    return (
-      <div style={{
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-lg)',
-        height: 220,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--text-muted)',
-        fontSize: 12,
-      }}>
-        Loading street view...
-      </div>
-    )
-  }
-
-  const embedUrl = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${coords.lat},${coords.lng}&heading=210&pitch=10&fov=90`
+  // Use raw address fields from Atlas — no title-casing, no formatting
+  // Google's geocoder handles uppercase addresses fine
+  const rawLocation = `${address}, ${city}, ${state}${zip ? ' ' + zip : ''}`
+  const embedUrl = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(rawLocation)}&heading=210&pitch=10&fov=90`
 
   return (
     <iframe

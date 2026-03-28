@@ -137,7 +137,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
       {/* 2. Street View */}
       <div style={{ marginBottom: 24 }}>
-        <StreetView address={fullAddress} />
+        <StreetView address={h.address} city={h.city} state={h.state} zip={h.zip} />
       </div>
 
       {/* 3. Property Details | Distress Indicators */}
