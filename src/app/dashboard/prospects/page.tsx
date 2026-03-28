@@ -138,15 +138,22 @@ export default function ProspectsPage() {
 
   // Filter out entity/LLC owners, $0 equity / low assessed value, sort by score, then group
   const grouped = useMemo(() => {
+    console.log('[Beacon] Before filter:', prospects.length, 'prospects');
+    const entityFiltered: string[] = [];
     const filtered = prospects.filter(p => {
       // Fix 3: entity name filter
-      if (isEntityOwner(p.owner_name)) return false;
+      if (isEntityOwner(p.owner_name)) {
+        entityFiltered.push(p.owner_name);
+        return false;
+      }
       // Fix 7: hide records with null, 0, or <$5K assessed value
       if (!p.assessed_value || p.assessed_value < 5000) return false;
       // Fix 7: hide $0 equity when last sale is a real sale (not $0/$1 transfer)
       if (p.last_sale_price > 1 && (!p.estimated_equity || p.estimated_equity <= 0)) return false;
       return true;
     });
+    console.log('[Beacon] After filter:', filtered.length, 'prospects');
+    console.log('[Beacon] Entity-filtered names:', entityFiltered);
     const sorted = filtered.sort((a, b) => b.compound_score - a.compound_score);
     const groups: Record<PriorityGroup, Prospect[]> = {
       critical: [],

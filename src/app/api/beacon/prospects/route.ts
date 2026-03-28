@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { fetchHouseholds } from '@/lib/atlas-api';
+import { isEntityOwner } from '@/lib/prospect-helpers';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -64,12 +65,19 @@ export async function GET(request: NextRequest) {
       atlas_parcel_id: h.parcel_id,
     }));
 
+    // Server-side entity + quality filter — belt and suspenders with client-side filter
+    const clean = prospects.filter(p => {
+      if (isEntityOwner(p.owner_name)) return false;
+      if (!p.assessed_value || p.assessed_value < 5000) return false;
+      return true;
+    });
+
     return Response.json({
-      prospects,
-      total: data.count ?? prospects.length,
+      prospects: clean,
+      total: clean.length,
       page,
       pageSize,
-      pageCount: Math.ceil((data.count ?? prospects.length) / pageSize),
+      pageCount: Math.ceil(clean.length / pageSize),
     });
   } catch (err) {
     console.error('[prospects] Atlas API error:', err);
