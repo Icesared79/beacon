@@ -72,13 +72,19 @@ export interface Schema {
   new_since_last_visit: number
 }
 
+export interface Signal {
+  id: string
+  code: string
+  label: string
+  category: string
+  base_weight: number
+  source: string
+  event_date: string | null
+  detected_at: string
+}
+
 export interface HouseholdDetail extends Household {
-  signals?: {
-    signal_type: string
-    severity: string
-    detected_at: string
-    description: string
-  }[]
+  signals?: Signal[]
 }
 
 // ── Fetchers ───────────────────────────────────────────

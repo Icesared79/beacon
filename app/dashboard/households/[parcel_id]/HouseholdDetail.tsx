@@ -121,7 +121,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             <div className="space-y-3">
               {h.signal_codes.map((code) => {
                 const color = signalColor(code)
-                const signal = signals.find((s) => s.signal_type === code)
+                const signal = signals.find((s) => s.code === code)
                 const bg =
                   color === 'red'
                     ? 'bg-red-100 text-red-700'
@@ -163,7 +163,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
               {signals
                 .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())
                 .map((s, i) => {
-                  const color = signalColor(s.signal_type)
+                  const color = signalColor(s.code)
                   const bg =
                     color === 'red'
                       ? 'bg-red-100 text-red-700'
@@ -176,10 +176,10 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
                         {new Date(s.detected_at).toLocaleDateString()}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${bg}`}>
-                        {s.severity}
+                        {s.category}
                       </span>
                       <span className="text-xs text-[var(--beacon-text-secondary)]">
-                        {s.description || signalLabel(s.signal_type)}
+                        {s.label || signalLabel(s.code)}
                       </span>
                     </div>
                   )
