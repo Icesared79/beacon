@@ -61,6 +61,30 @@ function formatPhone(raw: string): string {
   return raw
 }
 
+function cacheKey(address: string, city: string, state: string): string {
+  return `tracerfy:${address}|${city}|${state}`.toLowerCase().replace(/\s+/g, ' ')
+}
+
+function getCached(key: string): TracerResult | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const cached = JSON.parse(raw)
+    // Cache for 90 days
+    if (cached._ts && Date.now() - cached._ts < 90 * 24 * 60 * 60 * 1000) {
+      return cached.data as TracerResult
+    }
+    localStorage.removeItem(key)
+  } catch { /* ignore */ }
+  return null
+}
+
+function setCache(key: string, data: TracerResult) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ _ts: Date.now(), data }))
+  } catch { /* ignore */ }
+}
+
 export function ContactLookup({
   address,
   city,
@@ -76,9 +100,20 @@ export function ContactLookup({
   const [result, setResult] = useState<TracerResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [activeStep, setActiveStep] = useState(0)
+  const [fromCache, setFromCache] = useState(false)
   const apiDone = useRef(false)
   const apiResult = useRef<TracerResult | null>(null)
   const minTimeElapsed = useRef(false)
+
+  // Check cache on mount
+  useEffect(() => {
+    const cached = getCached(cacheKey(address, city, state))
+    if (cached && cached.hit && cached.persons.length > 0) {
+      setResult(cached)
+      setFromCache(true)
+      setLookupState('success')
+    }
+  }, [address, city, state])
 
   const finishLoading = useCallback(() => {
     const data = apiResult.current
@@ -90,9 +125,11 @@ export function ContactLookup({
       setLookupState('empty')
     } else {
       setResult(data)
+      setFromCache(false)
+      setCache(cacheKey(address, city, state), data)
       setLookupState('success')
     }
-  }, [])
+  }, [address, city, state])
 
   const handleLookup = async () => {
     setLookupState('loading')
@@ -135,6 +172,7 @@ export function ContactLookup({
     setResult(null)
     setErrorMsg('')
     setActiveStep(0)
+    setFromCache(false)
   }
 
   // IDLE
@@ -345,7 +383,9 @@ export function ContactLookup({
 
         {/* Footer */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Powered by Tracerfy</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            {fromCache ? 'Cached result · ' : ''}Powered by Tracerfy
+          </span>
           <button
             onClick={reset}
             style={{
@@ -357,6 +397,7 @@ export function ContactLookup({
               padding: 0,
               fontFamily: 'inherit',
             }}
+            title="New lookup will use 5 Tracerfy credits"
           >
             Search Again
           </button>
