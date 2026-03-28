@@ -88,9 +88,28 @@ export function signalBadgeColor(code: string): SignalBadgeColor {
   return 'blue'
 }
 
-export function priorityGroup(score: number, hasDistress: boolean): 'critical' | 'high' | 'monitor' {
-  if (score >= 70 && hasDistress) return 'critical'
-  if (score >= 50) return 'high'
+const URGENT_SIGNALS = [
+  'foreclosure', 'tax_lien', 'tax lien', 'active foreclosure',
+  'lis pendens', 'sheriff sale', 'reo',
+]
+
+const HIGH_NEED_SIGNALS = [
+  'bankruptcy', 'tax_delinquency', 'tax delinquency', 'probate',
+  'hmda_loan_denial', 'hmda loan denial', 'pre_foreclosure',
+  'pre-foreclosure', 'notice of default',
+]
+
+export function getRiskLevel(signals: string[]): 'Urgent' | 'High Need' | 'Moderate' {
+  const normalized = signals.map((s) => s.toLowerCase().trim())
+  if (normalized.some((s) => URGENT_SIGNALS.some((u) => s.includes(u)))) return 'Urgent'
+  if (normalized.some((s) => HIGH_NEED_SIGNALS.some((h) => s.includes(h)))) return 'High Need'
+  return 'Moderate'
+}
+
+export function priorityGroupBySignals(signalCodes: string[]): 'critical' | 'high' | 'monitor' {
+  const risk = getRiskLevel(signalCodes)
+  if (risk === 'Urgent') return 'critical'
+  if (risk === 'High Need') return 'high'
   return 'monitor'
 }
 

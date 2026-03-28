@@ -9,7 +9,7 @@ import {
   formatAddress,
   signalLabel,
   signalBadgeColor,
-  priorityGroup,
+  priorityGroupBySignals,
   titleCase,
   formatDistressDuration,
 } from '@/lib/format'
@@ -75,7 +75,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
     const high: Household[] = []
     const monitor: Household[] = []
     for (const h of filtered) {
-      const g = priorityGroup(h.compound_score, h.has_distress)
+      const g = priorityGroupBySignals(h.signal_codes)
       if (g === 'critical') critical.push(h)
       else if (g === 'high') high.push(h)
       else monitor.push(h)
