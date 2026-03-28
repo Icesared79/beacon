@@ -17,25 +17,25 @@ export function formatCurrency(n: number): string {
   }).format(n);
 }
 
-export function getScoreColor(score: number): string {
-  if (score >= 80) return '#DC2626';
-  if (score >= 60) return '#D97706';
-  if (score >= 40) return '#2563EB';
-  return '#94A3B8';
+export function getScoreColor(score: number, hasHardDistress = true): string {
+  if (!hasHardDistress) return '#94A3B8';        // Gray — no hard distress
+  if (score >= 70) return '#DC2626';              // Red (Urgent)
+  if (score >= 50) return '#D97706';              // Amber (High Need)
+  return '#2563EB';                               // Blue (Moderate)
 }
 
-export function getScoreLabel(score: number): string {
-  if (score >= 80) return 'Urgent';
-  if (score >= 60) return 'High Need';
-  if (score >= 40) return 'Moderate';
-  return 'Low';
+export function getScoreLabel(score: number, hasHardDistress = true): string {
+  if (!hasHardDistress) return 'Low';             // No hard distress = never Urgent/High Need
+  if (score >= 70) return 'Urgent';
+  if (score >= 50) return 'High Need';
+  return 'Moderate';
 }
 
 export function getDistressColor(score: number): string {
-  if (score >= 80) return '#DC2626';
-  if (score >= 60) return '#D97706';
-  if (score >= 40) return '#2563EB';
-  if (score >= 20) return '#93C5FD';
+  if (score >= 70) return '#DC2626';
+  if (score >= 50) return '#D97706';
+  if (score >= 30) return '#2563EB';
+  if (score >= 10) return '#93C5FD';
   return '#E2E8F0';
 }
 
