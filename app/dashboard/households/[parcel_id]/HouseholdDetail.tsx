@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { HouseholdDetail as HouseholdDetailType } from '@/lib/atlas-api'
+import type { HouseholdDetail as HouseholdDetailType, Signal } from '@/lib/atlas-api'
 import { ContactLookup } from '@/components/ContactLookup'
 import { StreetView } from '@/components/StreetView'
 import { formatOwnerName, getSeverityBadgeClass, formatMailingAddress } from '@/lib/format-name'
@@ -247,21 +247,15 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
           </dl>
         </div>
 
-        {/* Action Intelligence */}
+        {/* Outreach Intelligence */}
         <div style={panel}>
-          <div style={sectionLabel}>Action Intelligence</div>
-          <dl style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <DetailRow label="Service Category" value={deriveService(h.signal_codes)} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <dt style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Need Score</dt>
-              <dd style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                {String(h.compound_score)}
-                {h.compound_score > 100 && (
-                  <span title="Score reflects multiple overlapping distress factors" style={{ fontSize: 14, color: 'var(--text-muted)', cursor: 'help' }}>*</span>
-                )}
-              </dd>
-            </div>
-          </dl>
+          <OutreachIntelligence
+            riskLevel={risk.label as 'Urgent' | 'High Need' | 'Moderate'}
+            signals={signals}
+            signalCodes={h.signal_codes}
+            needScore={h.compound_score}
+            serviceCategory={h.suggested_service || deriveService(h.signal_codes)}
+          />
         </div>
       </div>
 
@@ -385,6 +379,162 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
           No activity recorded yet
         </div>
+      </div>
+    </div>
+  )
+}
+
+function signalDotColor(code: string): string {
+  const c = code.toLowerCase()
+  if (/foreclosure|tax.?lien|lis.?pendens/.test(c)) return '#ef4444'
+  if (/bankruptcy|tax.?delinquen|hmda|probate|notice.?of.?default/.test(c)) return '#f59e0b'
+  if (/equity|long.?hold|vacanc|ownership/.test(c)) return '#10b981'
+  return 'var(--text-muted)'
+}
+
+function signalImpact(code: string): string {
+  const c = code.toLowerCase()
+  if (/foreclosure|tax.?lien|lis.?pendens|bankruptcy/.test(c)) return 'High impact'
+  if (/tax.?delinquen|hmda|probate/.test(c)) return 'Moderate impact'
+  return 'Low impact'
+}
+
+function OutreachIntelligence({
+  riskLevel,
+  signals,
+  signalCodes,
+  needScore,
+  serviceCategory,
+}: {
+  riskLevel: 'Urgent' | 'High Need' | 'Moderate'
+  signals: Signal[]
+  signalCodes: string[]
+  needScore: number
+  serviceCategory: string
+}) {
+  const riskConfig = {
+    Urgent: {
+      border: 'var(--accent-red)',
+      labelColor: 'var(--accent-red-text)',
+      barColor: '#ef4444',
+      action: 'Call today',
+    },
+    'High Need': {
+      border: 'var(--accent-amber)',
+      labelColor: 'var(--accent-amber-text)',
+      barColor: '#f59e0b',
+      action: 'Outreach this week',
+    },
+    Moderate: {
+      border: 'var(--accent-teal)',
+      labelColor: 'var(--accent-teal-text)',
+      barColor: '#10b981',
+      action: 'Add to watch list',
+    },
+  }
+  const config = riskConfig[riskLevel]
+
+  // Use signals array if available, fall back to signalCodes
+  const allSignals = signals.length > 0
+    ? signals.map((s) => s.code)
+    : signalCodes
+  const signalCount = allSignals.length
+
+  const barWidth = Math.min((needScore / 200) * 100, 100)
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 16 }}>
+        Outreach Intelligence
+      </div>
+
+      {/* Recommended Action */}
+      <div style={{
+        borderLeft: `3px solid ${config.border}`,
+        borderRadius: '0 6px 6px 0',
+        background: 'var(--bg-elevated)',
+        padding: '14px 16px',
+        marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: config.labelColor, fontWeight: 700 }}>
+          Recommended Action
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
+          {config.action}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+          {signalCount === 0
+            ? 'No distress signals detected'
+            : `${signalCount} active distress signal${signalCount === 1 ? '' : 's'} detected`}
+        </div>
+      </div>
+
+      {/* Score Drivers */}
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: 10 }}>
+        Score Drivers
+      </div>
+      {allSignals.length > 0 ? (
+        <div>
+          {allSignals.map((code, i) => (
+            <div
+              key={code + i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '6px 0',
+                borderBottom: i < allSignals.length - 1 ? '0.5px solid var(--border-subtle)' : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: signalDotColor(code), flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{signalLabel(code)}</span>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                {signalImpact(code)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+          No signals on record
+        </div>
+      )}
+
+      {/* Divider */}
+      <div style={{ borderTop: '0.5px solid var(--border-subtle)', margin: '16px 0' }} />
+
+      {/* Need Score */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>Need Score</span>
+        <div style={{ flex: 1, margin: '0 12px', height: 4, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ width: `${barWidth}%`, height: '100%', background: config.barColor, borderRadius: 2 }} />
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+          {needScore}
+          {needScore > 100 && (
+            <span title="Score reflects multiple overlapping distress factors" style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 2, cursor: 'help' }}>*</span>
+          )}
+        </span>
+      </div>
+
+      {/* Recommended Service */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Recommended Service</span>
+        <span style={{
+          background: 'var(--badge-blue-bg)',
+          color: 'var(--badge-blue-text)',
+          border: '1px solid var(--badge-blue-border)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          padding: '2px 8px',
+          borderRadius: 'var(--radius-sm)',
+        }}>
+          {serviceCategory || 'Credit Counseling'}
+        </span>
       </div>
     </div>
   )
