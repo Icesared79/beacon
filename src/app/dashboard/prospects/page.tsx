@@ -136,9 +136,17 @@ export default function ProspectsPage() {
     setNameSearch('');
   }
 
-  // Filter out entity/LLC owners, sort by score, then group
+  // Filter out entity/LLC owners, $0 equity / low assessed value, sort by score, then group
   const grouped = useMemo(() => {
-    const filtered = prospects.filter(p => !isEntityOwner(p.owner_name));
+    const filtered = prospects.filter(p => {
+      // Fix 3: entity name filter
+      if (isEntityOwner(p.owner_name)) return false;
+      // Fix 7: hide records with null, 0, or <$5K assessed value
+      if (!p.assessed_value || p.assessed_value < 5000) return false;
+      // Fix 7: hide $0 equity when last sale is a real sale (not $0/$1 transfer)
+      if (p.last_sale_price > 1 && (!p.estimated_equity || p.estimated_equity <= 0)) return false;
+      return true;
+    });
     const sorted = filtered.sort((a, b) => b.compound_score - a.compound_score);
     const groups: Record<PriorityGroup, Prospect[]> = {
       critical: [],
@@ -402,9 +410,16 @@ function ProspectRow({ prospect }: { prospect: Prospect }) {
         </div>
       </td>
 
-      {/* Equity */}
+      {/* Equity — Fix 4: handle $0/$1 transfer sales */}
       <td className="px-4 py-3 text-right">
-        <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.assessed_value || prospect.estimated_equity)}</p>
+        {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
+          <>
+            <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.assessed_value)}</p>
+            <p className="text-[10px] text-beacon-text-muted">Based on assessed value</p>
+          </>
+        ) : (
+          <p className="text-sm font-semibold text-beacon-text tabular-nums">{formatCurrency(prospect.estimated_equity || prospect.assessed_value)}</p>
+        )}
       </td>
 
       {/* Days in distress */}

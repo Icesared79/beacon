@@ -8,7 +8,6 @@ import {
   MapPin,
   BarChart3,
   ArrowRight,
-  ClipboardList,
   Inbox,
 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
@@ -66,7 +65,7 @@ export default function DashboardPage() {
   const statCards = stats
     ? [
         {
-          label: 'Households Who May Need Help',
+          label: 'Households Identified',
           value: stats.total,
           sublabel: 'Total identified',
           icon: Users,
@@ -84,13 +83,13 @@ export default function DashboardPage() {
         {
           label: 'States with Coverage',
           value: stats.statesWithCoverage,
-          sublabel: 'Markets identified',
+          sublabel: 'States with Atlas data',
           icon: MapPin,
           color: '#D97706',
           bgColor: '#FFFBEB',
         },
         {
-          label: 'Avg Distress Score',
+          label: 'Avg Need Score',
           value: stats.avgScore,
           sublabel: 'Across all prospects',
           icon: BarChart3,
@@ -208,15 +207,15 @@ export default function DashboardPage() {
               </Link>
 
               <Link
-                href="/dashboard/prospects?assigned=me"
+                href="/dashboard/prospects?minScore=70"
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-beacon-surface-alt transition-colors group"
               >
-                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                  <ClipboardList size={16} className="text-amber-600 dark:text-amber-400" />
+                <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                  <AlertCircle size={16} className="text-red-600 dark:text-red-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-beacon-text">My Assignments</p>
-                  <p className="text-xs text-beacon-text-muted">Households assigned to you</p>
+                  <p className="text-sm font-medium text-beacon-text">Urgent Households</p>
+                  <p className="text-xs text-beacon-text-muted">Critical tier — needs immediate outreach</p>
                 </div>
                 <ArrowRight size={14} className="text-beacon-text-muted group-hover:text-beacon-text transition-colors" />
               </Link>

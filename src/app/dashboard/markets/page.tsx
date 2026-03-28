@@ -41,33 +41,50 @@ interface CoverageRow {
 
 /* ── Build unified coverage rows ── */
 
-const OFFICE_SET = new Set(ACCC_OFFICES.map((o) => `${o.city}|${o.state}`));
+// Normalize city names to Title Case for matching
+function normalizeCity(raw: string): string {
+  if (!raw) return '';
+  return raw.trim().replace(/\s+/g, ' ')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+const OFFICE_SET = new Set(ACCC_OFFICES.map((o) => `${normalizeCity(o.city)}|${o.state}`));
 
 function buildCoverageRows(markets: MarketFromAPI[]): CoverageRow[] {
-  const rows: CoverageRow[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, CoverageRow>();
 
   for (const m of markets) {
-    const key = `${m.city}|${m.state}`;
-    seen.add(key);
-    const hasOffice = OFFICE_SET.has(key);
-    rows.push({
-      city: m.city,
-      state: m.state,
-      hasOffice,
-      coverage: 'active',
-      households: m.prospects,
-      urgent: m.critical,
-      needScore: m.score,
-      isGap: false,
-    });
+    const city = normalizeCity(m.city);
+    const state = (m.state || '').trim().toUpperCase();
+    const key = `${city}|${state}`;
+
+    const existing = seen.get(key);
+    if (existing) {
+      // Fix 2: Merge duplicates (e.g. "DENVER CO" and "Denver CO")
+      existing.households += m.prospects;
+      existing.urgent += m.critical;
+      existing.needScore = Math.round((existing.needScore + m.score) / 2);
+    } else {
+      const hasOffice = OFFICE_SET.has(key);
+      seen.set(key, {
+        city,
+        state,
+        hasOffice,
+        coverage: 'active',
+        households: m.prospects,
+        urgent: m.critical,
+        needScore: m.score,
+        isGap: false,
+      });
+    }
   }
 
   for (const o of ACCC_OFFICES) {
-    const key = `${o.city}|${o.state}`;
+    const key = `${normalizeCity(o.city)}|${o.state}`;
     if (!seen.has(key)) {
-      seen.add(key);
-      rows.push({
+      seen.set(key, {
         city: o.city,
         state: o.state,
         hasOffice: true,
@@ -80,7 +97,7 @@ function buildCoverageRows(markets: MarketFromAPI[]): CoverageRow[] {
     }
   }
 
-  return rows;
+  return Array.from(seen.values());
 }
 
 /* ── Sort logic ── */

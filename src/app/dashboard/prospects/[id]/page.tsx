@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 import { SIGNAL_COLORS, STATUS_FLOW } from '@/lib/design-tokens';
-import { getSignalsForProspect, getSuggestedService } from '@/lib/prospect-helpers';
+import { getSignalsForProspect, getSuggestedService, hasHardDistress } from '@/lib/prospect-helpers';
 import type { Prospect } from '@/lib/prospect-helpers';
 import { cn, formatCurrency, getScoreColor, getScoreLabel, formatOwnerName } from '@/lib/utils';
 import { StreetView } from '@/components/StreetView';
@@ -115,6 +115,7 @@ export default function ProspectDetailPage({
   const [contactStep, setContactStep] = useState(0);
   const [contactProgress, setContactProgress] = useState(0);
   const [savedRecord, setSavedRecord] = useState<ContactRecord | null>(null);
+  const [apiEvents, setApiEvents] = useState<SignalEvent[]>([]);
 
   useEffect(() => {
     async function loadProspect() {
@@ -124,6 +125,10 @@ export default function ProspectDetailPage({
         if (data.prospect) {
           setProspect(data.prospect);
           setStatus(data.prospect.status || 'new');
+        }
+        // Fix 1: Use real signal events from the API when available
+        if (data.events && data.events.length > 0) {
+          setApiEvents(data.events);
         }
       } catch (err) {
         console.error('Failed to load prospect:', err);
@@ -136,9 +141,11 @@ export default function ProspectDetailPage({
 
   const signals = prospect ? getSignalsForProspect(prospect) : [];
 
-  // Generate timeline events from prospect hardship flags + dates
+  // Fix 1: Use real API events when available, fall back to interpolated events
   const events: SignalEvent[] = useMemo(() => {
     if (!prospect) return [];
+    // If we have real events from the enriched Atlas API, use them
+    if (apiEvents.length > 0) return apiEvents;
     const first = prospect.first_signal_date;
     const recent = prospect.most_recent_signal_date;
     if (!first) return [];
@@ -252,7 +259,7 @@ export default function ProspectDetailPage({
     // Sort chronologically
     items.sort((a, b) => a.detected_date.localeCompare(b.detected_date));
     return items;
-  }, [prospect]);
+  }, [prospect, apiEvents]);
 
   // Load any previously saved lookup on mount
   useEffect(() => {
@@ -300,8 +307,9 @@ export default function ProspectDetailPage({
     );
   }
 
-  const scoreColor = getScoreColor(prospect.compound_score);
-  const scoreLabel = getScoreLabel(prospect.compound_score);
+  const distress = hasHardDistress(prospect);
+  const scoreColor = getScoreColor(prospect.compound_score, distress);
+  const scoreLabel = getScoreLabel(prospect.compound_score, distress);
 
   function handleAddNote() {
     if (!noteText.trim()) return;
@@ -472,12 +480,25 @@ export default function ProspectDetailPage({
               <p className="text-lg font-bold text-beacon-text mt-0.5">{formatCurrency(prospect.assessed_value)}</p>
             </div>
             <div>
-              <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Equity at Stake</p>
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(prospect.estimated_equity)}</p>
+              <p className="text-xs text-beacon-text-muted uppercase tracking-wider">
+                {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? 'Estimated Equity' : 'Equity at Stake'}
+              </p>
+              {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
+                <>
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(prospect.assessed_value)}</p>
+                  <p className="text-[10px] text-beacon-text-muted">Based on assessed value</p>
+                </>
+              ) : (
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(prospect.estimated_equity)}</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-beacon-text-muted uppercase tracking-wider">Last Sale</p>
-              <p className="text-sm font-medium text-beacon-text mt-0.5">{formatCurrency(prospect.last_sale_price)}</p>
+              {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
+                <p className="text-sm font-medium text-beacon-text-muted mt-0.5">Transfer (non-market)</p>
+              ) : (
+                <p className="text-sm font-medium text-beacon-text mt-0.5">{formatCurrency(prospect.last_sale_price)}</p>
+              )}
               <p className="text-xs text-beacon-text-muted">{prospect.last_sale_date || '—'}</p>
             </div>
             <div>
@@ -527,11 +548,11 @@ export default function ProspectDetailPage({
           <div className="flex gap-4 text-xs text-beacon-text-muted">
             <span className="flex items-center gap-1">
               <Calendar size={12} />
-              First detected: {prospect.first_signal_date || '—'}
+              First detected: {events.length > 0 ? events[0].detected_date : prospect.first_signal_date || '—'}
             </span>
             <span className="flex items-center gap-1">
               <Clock size={12} />
-              Most recent: {prospect.most_recent_signal_date || '—'}
+              Most recent: {events.length > 0 ? events[events.length - 1].detected_date : prospect.most_recent_signal_date || '—'}
             </span>
           </div>
         </div>
@@ -604,16 +625,29 @@ export default function ProspectDetailPage({
               </div>
               <div>
                 <p className="text-xs text-beacon-text-muted">Estimated Equity</p>
-                <p className={cn('text-lg font-bold mt-0.5', prospect.estimated_equity > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-beacon-text-muted')}>
-                  {prospect.estimated_equity > 0 ? formatCurrency(prospect.estimated_equity) : 'Unavailable'}
-                </p>
+                {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
+                  <>
+                    <p className="text-lg font-bold mt-0.5 text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(prospect.assessed_value)}
+                    </p>
+                    <p className="text-[10px] text-beacon-text-muted">Based on assessed value</p>
+                  </>
+                ) : (
+                  <p className={cn('text-lg font-bold mt-0.5', prospect.estimated_equity > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-beacon-text-muted')}>
+                    {prospect.estimated_equity > 0 ? formatCurrency(prospect.estimated_equity) : 'Unavailable'}
+                  </p>
+                )}
               </div>
-              {prospect.last_sale_price > 0 && (
-                <div>
-                  <p className="text-xs text-beacon-text-muted">Last Sale Price</p>
+              <div>
+                <p className="text-xs text-beacon-text-muted">Last Sale Price</p>
+                {prospect.last_sale_price != null && prospect.last_sale_price <= 1 ? (
+                  <p className="text-sm font-semibold text-beacon-text-muted mt-0.5">Transfer (non-market)</p>
+                ) : prospect.last_sale_price > 0 ? (
                   <p className="text-sm font-semibold text-beacon-text mt-0.5">{formatCurrency(prospect.last_sale_price)}</p>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm font-semibold text-beacon-text-muted mt-0.5">—</p>
+                )}
+              </div>
               <div>
                 <p className="text-xs text-beacon-text-muted">Years in Property</p>
                 <p className="text-sm font-semibold text-beacon-text mt-0.5">{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>

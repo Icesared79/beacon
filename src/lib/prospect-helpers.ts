@@ -130,11 +130,24 @@ const ENTITY_KEYWORDS = [
   'COMPANY', 'ENTERPRISES', 'DEVELOPMENT', 'SERVICES',
   'CAPITAL', 'FUNDING', 'ACQUISITIONS', 'COMMERCIAL',
   'LLLP', 'REIT', 'LEASING',
+  // Fix 3: additional institutional patterns
+  'AUTHORITY', 'HOUSING AUTH', 'ASSOCIATION', 'FOUNDATION',
+  'PARISH', 'CHURCH', 'SCHOOL DISTRICT', 'CITY OF', 'STATE OF',
+  'COUNTY OF', 'GOVERNMENT', 'MUNICIPAL', 'TOWNSHIP', 'TRANSIT',
+  'DISTRICT', 'KOLLEL', 'BIBLE', 'MINISTRY',
 ];
 
-/** Returns true if the owner name looks like a business entity, not an individual. */
+/** Returns true if the owner name looks like a business entity, not an individual.
+ *  TRUST is only flagged if not preceded by a personal name (2+ words before it). */
 export function isEntityOwner(ownerName: string): boolean {
   if (!ownerName) return false;
   const upper = ownerName.toUpperCase();
-  return ENTITY_KEYWORDS.some(kw => upper.includes(kw));
+  if (ENTITY_KEYWORDS.some(kw => upper.includes(kw))) return true;
+  // TRUST check — allow "John Smith Trust" but reject "Family Trust", "The Trust"
+  if (upper.includes('TRUST')) {
+    const parts = ownerName.trim().split(/\s+/);
+    const trustIdx = parts.findIndex(p => /^trust$/i.test(p));
+    if (trustIdx < 2) return true; // fewer than 2 words before TRUST → entity
+  }
+  return false;
 }
