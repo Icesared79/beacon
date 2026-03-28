@@ -101,8 +101,8 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   const hasApiKey = apiKey && apiKey.length > 0
-  const streetViewUrl = hasApiKey
-    ? `https://maps.googleapis.com/maps/api/streetview?size=1200x300&location=${encodeURIComponent(fullAddress)}&key=${apiKey}&return_error_codes=true`
+  const streetViewEmbedUrl = hasApiKey
+    ? `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(fullAddress)}&heading=210&pitch=10&fov=90`
     : null
 
   return (
@@ -142,20 +142,20 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
       {/* 2. Street View */}
       <div style={{ marginBottom: 24 }}>
-        {streetViewUrl && (
-          <img
-            src={streetViewUrl}
-            alt="Property street view"
+        {streetViewEmbedUrl && (
+          <iframe
+            src={streetViewEmbedUrl}
             style={{
               width: '100%',
               height: 220,
-              objectFit: 'cover',
+              border: 'none',
               borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--border-subtle)',
               display: 'block',
             }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+            onError={() => {
               if (fallbackRef.current) fallbackRef.current.style.display = 'flex'
             }}
           />
@@ -167,7 +167,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             border: '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-lg)',
             height: 100,
-            display: streetViewUrl ? 'none' : 'flex',
+            display: streetViewEmbedUrl ? 'none' : 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
