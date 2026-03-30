@@ -91,11 +91,11 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
   const stateCount = new Set(filtered.map((h) => h.state)).size
 
   const selectStyle: React.CSSProperties = {
-    padding: '6px 12px',
+    padding: '6px 10px',
     fontSize: 12,
-    borderRadius: 'var(--radius-md)',
+    borderRadius: 4,
     border: '1px solid var(--border-subtle)',
-    background: 'var(--bg-surface)',
+    background: 'var(--bg-elevated)',
     color: 'var(--text-primary)',
     outline: 'none',
   }
@@ -108,7 +108,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
             Households
           </h1>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             {filtered.length.toLocaleString()} households across {stateCount} states
           </span>
         </div>

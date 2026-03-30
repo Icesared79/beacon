@@ -33,7 +33,7 @@ export default async function DashboardPage() {
               transition: 'background-color 0.15s ease, border-color 0.15s ease',
             }}
           >
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>
               {t.label}
             </div>
             <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: 4 }}>
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
           transition: 'background-color 0.15s ease, border-color 0.15s ease',
         }}
       >
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 12 }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 12 }}>
           Distress Indicators
         </div>
         <div style={{ width: '100%', height: 8, borderRadius: 2, background: 'var(--bg-elevated)', overflow: 'hidden', display: 'flex' }}>
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
             <div style={{ width: `${Math.max((monitorCount / total) * 100, 2)}%`, height: '100%', background: 'var(--accent-blue)' }} />
           )}
         </div>
-        <div style={{ display: 'flex', gap: 24, marginTop: 12 }}>
+        <div style={{ display: 'flex', gap: 20, marginTop: 12 }}>
           {criticalCount > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-red)' }} />
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-subtle)',
               borderLeft: '3px solid var(--accent-red)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: '0 8px 8px 0',
               padding: '20px 24px',
               cursor: 'pointer',
               transition: 'background-color 0.15s ease, border-color 0.15s ease',
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-subtle)',
               borderLeft: '3px solid var(--accent-blue)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: '0 8px 8px 0',
               padding: '20px 24px',
               cursor: 'pointer',
               transition: 'background-color 0.15s ease, border-color 0.15s ease',
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-subtle)',
               borderLeft: '3px solid var(--accent-teal)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: '0 8px 8px 0',
               padding: '20px 24px',
               cursor: 'pointer',
               transition: 'background-color 0.15s ease, border-color 0.15s ease',
@@ -155,7 +155,7 @@ export default async function DashboardPage() {
           transition: 'background-color 0.15s ease, border-color 0.15s ease',
         }}
       >
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 12 }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 12 }}>
           Recent Activity
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: 32 }}>

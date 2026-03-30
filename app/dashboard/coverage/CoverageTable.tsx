@@ -19,8 +19,9 @@ const thStyle: React.CSSProperties = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
-  color: 'var(--text-faint)',
+  color: 'var(--text-muted)',
   borderBottom: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
 }
 
 export function CoverageTable({ rows }: { rows: Row[] }) {

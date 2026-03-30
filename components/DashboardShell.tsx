@@ -133,7 +133,7 @@ export function DashboardShell({
       </header>
 
       {/* Content */}
-      <main style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>{children}</main>
+      <main style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto' }}>{children}</main>
     </div>
   )
 }
