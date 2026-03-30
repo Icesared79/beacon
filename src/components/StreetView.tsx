@@ -55,7 +55,8 @@ function Fallback() {
 }
 
 export function StreetView({ address, city, state, zip }: StreetViewProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    || process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
   const url = buildStreetViewUrl(address, city, state, zip, apiKey);
   const [imgError, setImgError] = useState(false);
 

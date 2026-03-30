@@ -418,7 +418,7 @@ export default function ProspectDetailPage({
       </div>
 
       {/* Street View — reduced height */}
-      {process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY && (
+      {(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY) && (
         <StreetView
           address={prospect.address}
           city={prospect.city}
