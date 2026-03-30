@@ -13,7 +13,6 @@ import {
   sortSignalsBySeverity,
   titleCase,
   formatDistressDuration,
-  getEquityDisplay,
 } from '@/lib/format'
 
 interface Props {
@@ -264,7 +263,7 @@ function PriorityGroup({
           >
             <span style={colHeaderStyle}>Owner / Address</span>
             <span style={colHeaderStyle}>Signals</span>
-            <span style={{ ...colHeaderStyle, textAlign: 'right' }}>Equity</span>
+            <span style={{ ...colHeaderStyle, textAlign: 'right' }}>Assessed Value</span>
             <span style={{ ...colHeaderStyle, textAlign: 'right' }}>In Distress</span>
             <span style={colHeaderStyle} />
           </div>
@@ -351,31 +350,17 @@ function HouseholdRow({
         )}
       </div>
 
-      {/* Equity */}
-      {(() => {
-        const eq = getEquityDisplay(
-          h.assessed_value,
-          h.estimated_equity,
-          h.last_sale_price,
-          h.last_sale_date ?? null,
-          h.years_held ?? null
-        )
-        return (
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-              {eq.value}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-              <span style={{
-                width: 5, height: 5, borderRadius: '50%',
-                background: eq.badgeColor === 'teal' ? '#10b981' : eq.badgeColor === 'amber' ? '#f59e0b' : '#ef4444',
-                display: 'inline-block', flexShrink: 0,
-              }} />
-              {eq.note}
-            </div>
-          </div>
-        )
-      })()}
+      {/* Assessed Value */}
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+          {h.assessed_value ? formatCurrency(h.assessed_value) : '—'}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+          {h.last_sale_price != null && h.last_sale_price > 1
+            ? `Sale: ${formatCurrency(h.last_sale_price)}`
+            : 'No sale on record'}
+        </div>
+      </div>
 
       {/* In Distress */}
       <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>

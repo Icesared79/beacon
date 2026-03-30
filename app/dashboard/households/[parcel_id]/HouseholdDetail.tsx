@@ -16,9 +16,7 @@ import {
   sortSignalsBySeverity,
   severityLabel,
   titleCase,
-  getEquityDisplay,
 } from '@/lib/format'
-import type { EquityConfidence } from '@/lib/format'
 
 function riskBadgeFromSignals(signalCodes: string[]) {
   const group = getHouseholdGroup(signalCodes)
@@ -73,41 +71,6 @@ const selectBase: React.CSSProperties = {
   outline: 'none',
 }
 
-function EquityBadge({ confidence, text }: { confidence: EquityConfidence; text: string }) {
-  const styles = {
-    verified: {
-      background: 'var(--badge-teal-bg)',
-      color: 'var(--badge-teal-text)',
-      border: '1px solid var(--badge-teal-border)',
-    },
-    estimated: {
-      background: 'var(--badge-amber-bg)',
-      color: 'var(--badge-amber-text)',
-      border: '1px solid var(--badge-amber-border)',
-    },
-    unverified: {
-      background: 'var(--badge-red-bg)',
-      color: 'var(--badge-red-text)',
-      border: '1px solid var(--badge-red-border)',
-    },
-  }
-  return (
-    <span style={{
-      ...styles[confidence],
-      fontSize: '9px',
-      fontWeight: 700,
-      letterSpacing: '0.06em',
-      textTransform: 'uppercase' as const,
-      padding: '2px 6px',
-      borderRadius: '3px',
-      marginLeft: '8px',
-      verticalAlign: 'middle',
-    }}>
-      {text}
-    </span>
-  )
-}
-
 export function HouseholdDetail({ household: h }: { household: HouseholdDetailType }) {
   const [notes, setNotes] = useState('')
   const [savedNotes, setSavedNotes] = useState<string[]>([])
@@ -120,13 +83,9 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
   const yearsHeld = h.years_held ?? null
   const signals = h.signals ?? []
 
-  const equityDisplay = getEquityDisplay(
-    h.assessed_value,
-    h.estimated_equity,
-    h.last_sale_price,
-    h.last_sale_date ?? null,
-    h.years_held ?? null
-  )
+  const hasSalePrice = h.last_sale_price != null && h.last_sale_price > 1
+  const assessedValue = h.assessed_value ?? 0
+  const currentYear = new Date().getFullYear()
 
   const firstDate = h.first_signal_date ? new Date(h.first_signal_date).toLocaleDateString() : null
   const lastSignalDate = signals.length > 0
@@ -179,21 +138,8 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         <div style={panel}>
           <div style={sectionLabel}>Property Details</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {equityDisplay.label}
-                <EquityBadge confidence={equityDisplay.confidence} text={equityDisplay.badgeText} />
-              </span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                  {equityDisplay.value}
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {equityDisplay.note}
-                </div>
-              </div>
-            </div>
-            <DetailRow label="Last Sale" value={formatSalePrice(h.last_sale_price)} />
+            <DetailRow label="Assessed Value" value={formatCurrency(assessedValue)} />
+            <DetailRow label="Last Sale Price" value={hasSalePrice ? formatCurrency(h.last_sale_price) : '—'} />
             <DetailRow label="Years Held" value={yearsHeld ? `${yearsHeld} years` : '—'} />
             <DetailRow label="County" value={h.county || '—'} />
           </div>
@@ -248,23 +194,37 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         <div style={panel}>
           <div style={sectionLabel}>Equity Position</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {equityDisplay.label}
-                <EquityBadge confidence={equityDisplay.confidence} text={equityDisplay.badgeText} />
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Assessed Value</span>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                  {equityDisplay.value}
+                  ${assessedValue.toLocaleString()}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {equityDisplay.note}
-                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>County tax assessment</div>
               </div>
             </div>
-            <DetailRow label="Assessed Value" value={formatCurrency(h.assessed_value)} />
-            <DetailRow label="Last Sale Price" value={formatSalePrice(h.last_sale_price)} />
-            <DetailRow label="Years in Property" value={yearsHeld ? `${yearsHeld}` : '—'} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Last Sale Price</span>
+              {hasSalePrice ? (
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                  ${h.last_sale_price!.toLocaleString()}
+                </span>
+              ) : (
+                <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>No record on file</span>
+              )}
+            </div>
+            {hasSalePrice && assessedValue > h.last_sale_price! && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Assessed Appreciation</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-teal)', fontVariantNumeric: 'tabular-nums' }}>
+                    +${(assessedValue - h.last_sale_price!).toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Since last recorded sale</div>
+                </div>
+              </div>
+            )}
+            <DetailRow label="Years in Property" value={yearsHeld ? `${yearsHeld} years` : '—'} />
             <DetailRow label="County" value={h.county || '—'} />
           </div>
         </div>
@@ -286,12 +246,12 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         signalCodes={h.signal_codes}
         signals={signals}
         yearsHeld={yearsHeld}
-        estimatedEquity={h.estimated_equity}
+        assessedValue={assessedValue}
         lastSalePrice={h.last_sale_price}
+        lastSaleDate={h.last_sale_date ?? null}
         serviceCategory={h.suggested_service || deriveService(h.signal_codes)}
         compoundScore={h.compound_score}
         firstSignalDate={h.first_signal_date}
-        equityDisplay={equityDisplay}
       />
 
       {/* 6. Contact Information (was 5) */}
@@ -630,55 +590,40 @@ function OutreachBriefing({
   signalCodes,
   signals,
   yearsHeld,
-  estimatedEquity,
+  assessedValue,
   lastSalePrice,
+  lastSaleDate,
   serviceCategory,
   compoundScore,
   firstSignalDate,
-  equityDisplay,
 }: {
   signalCodes: string[]
   signals: Signal[]
   yearsHeld: number | null
-  estimatedEquity: number | null
+  assessedValue: number
   lastSalePrice: number | null
+  lastSaleDate: string | null
   serviceCategory: string
   compoundScore: number
   firstSignalDate: string | null
-  equityDisplay: import('@/lib/format').EquityDisplay
 }) {
   const situation = deriveSituation(signalCodes)
+  const hasSalePrice = lastSalePrice != null && lastSalePrice > 1
 
-  // Household context — driven by equity confidence
+  // Household context — honest display based on available data
   let contextValue: string
   let contextSub: string
 
-  if (equityDisplay.confidence === 'unverified') {
-    contextValue = 'Equity data insufficient'
-    contextSub = 'No sale price on record — cannot verify equity position'
-  } else if (equityDisplay.confidence === 'estimated') {
-    contextValue = 'Potential equity — unverified'
-    contextSub = 'Based on assessed value only · Mortgage status unknown'
+  if (hasSalePrice && yearsHeld != null && yearsHeld > 0) {
+    const year = new Date().getFullYear() - yearsHeld
+    contextValue = `Owner since ${year} · $${assessedValue.toLocaleString()} assessed`
+    contextSub = `Purchased for $${lastSalePrice.toLocaleString()} · ${yearsHeld} years in property`
+  } else if (yearsHeld != null && yearsHeld > 0) {
+    contextValue = `${yearsHeld}-year owner`
+    contextSub = `Assessed at $${assessedValue.toLocaleString()} · No sale price on record`
   } else {
-    // verified — use existing logic
-    const equityStatus =
-      estimatedEquity != null && estimatedEquity > 100000
-        ? 'high equity'
-        : estimatedEquity != null && estimatedEquity > 0
-          ? 'some equity'
-          : 'equity unknown'
-
-    if (yearsHeld != null && yearsHeld > 10) contextValue = `Long-term owner, ${equityStatus}`
-    else if (yearsHeld != null && yearsHeld > 0) contextValue = `Owner since ${new Date().getFullYear() - yearsHeld}, ${equityStatus}`
-    else contextValue = equityStatus.charAt(0).toUpperCase() + equityStatus.slice(1)
-
-    const contextSubParts: string[] = []
-    if (yearsHeld != null) contextSubParts.push(`In property ${yearsHeld} years`)
-    if (estimatedEquity != null) contextSubParts.push(`$${estimatedEquity.toLocaleString()} equity`)
-    else contextSubParts.push('Equity unknown')
-    if (lastSalePrice != null && lastSalePrice > 0) contextSubParts.push(`Last sale $${lastSalePrice.toLocaleString()}`)
-    else contextSubParts.push('No recorded sale')
-    contextSub = contextSubParts.join(' · ')
+    contextValue = 'Ownership history limited'
+    contextSub = `Assessed at $${assessedValue.toLocaleString()} · No transaction history on record`
   }
 
   // Signal detail sorted
@@ -820,12 +765,12 @@ function OutreachBriefing({
         })
       )}
 
-      {/* Equity Callout Bar */}
+      {/* Callout Bar */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 16,
           background: 'var(--bg-elevated)',
           borderRadius: 'var(--radius-md)',
           padding: '12px 16px',
@@ -833,41 +778,38 @@ function OutreachBriefing({
         }}
       >
         <div>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-            {equityDisplay.label}
-            <EquityBadge confidence={equityDisplay.confidence} text={equityDisplay.badgeText} />
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+            Assessed Value
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-            {equityDisplay.value}
+            ${assessedValue.toLocaleString()}
           </div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-            {equityDisplay.note}
+            County tax assessment
           </div>
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+            Last Sale Price
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+            {hasSalePrice ? `$${lastSalePrice!.toLocaleString()}` : 'No record on file'}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            {lastSaleDate ? new Date(lastSaleDate).toLocaleDateString() : 'Date unknown'}
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
             Years in Property
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
             {yearsHeld != null ? `${yearsHeld} years` : 'Unknown'}
           </div>
-          {yearsHeld != null && (
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-              Since {currentYear - yearsHeld}
-            </div>
-          )}
-        </div>
-
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            Need Score
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-            {compoundScore}
-          </div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-            {compoundScore > 100 ? 'Above average distress threshold' : 'Moderate distress indicators'}
+            {yearsHeld != null ? `Since ${currentYear - yearsHeld}` : ''}
           </div>
         </div>
       </div>
