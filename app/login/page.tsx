@@ -14,10 +14,23 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    if (email && password) {
-      router.push('/dashboard')
-    } else {
-      setError('Please enter your email and password.')
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (res.ok) {
+        router.push('/dashboard')
+      } else {
+        const data = await res.json()
+        setError(data.error || 'Invalid credentials.')
+        setLoading(false)
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
     }
   }

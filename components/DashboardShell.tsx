@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ThemeToggle } from './ThemeToggle'
 
 const navItems = [
@@ -18,6 +18,12 @@ export function DashboardShell({
   lastUpdated?: string
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
 
   const formattedDate = lastUpdated
     ? new Date(lastUpdated).toLocaleDateString('en-US', {
@@ -96,6 +102,31 @@ export function DashboardShell({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
           <ThemeToggle />
+          <div
+            style={{
+              width: 1,
+              height: 16,
+              background: 'var(--border-subtle)',
+              margin: '0 12px',
+            }}
+          />
+          <button
+            onClick={handleLogout}
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '5px 8px',
+              borderRadius: 4,
+            }}
+          >
+            Sign Out
+          </button>
           {formattedDate && (
             <>
               <div
