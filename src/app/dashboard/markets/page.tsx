@@ -230,34 +230,34 @@ export default function CoveragePage() {
 
       {/* ── Summary Tiles ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 text-center">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border text-center" style={{ padding: '20px 24px' }}>
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <Building2 size={13} className="text-green-600 dark:text-green-400" />
-            <span className="text-[10px] font-medium text-beacon-text-muted uppercase tracking-wider">
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-text-muted)' }}>
               Markets Active
             </span>
           </div>
-          <p className="text-2xl font-bold text-beacon-text">{marketsActive}</p>
+          <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--beacon-text)', fontVariantNumeric: 'tabular-nums' }}>{marketsActive}</p>
         </div>
 
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border border-l-[3px] border-l-red-500 p-4 text-center">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border border-l-[3px] border-l-red-500 text-center" style={{ padding: '20px 24px' }}>
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <AlertTriangle size={13} className="text-red-500" />
-            <span className="text-[10px] font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-critical)' }}>
               Markets with No Coverage
             </span>
           </div>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{marketsNoData}</p>
+          <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--beacon-critical)', fontVariantNumeric: 'tabular-nums' }}>{marketsNoData}</p>
         </div>
 
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-4 text-center">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border text-center" style={{ padding: '20px 24px' }}>
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <UsersIcon size={13} className="text-beacon-primary" />
-            <span className="text-[10px] font-medium text-beacon-text-muted uppercase tracking-wider">
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-text-muted)' }}>
               Total Households Identified
             </span>
           </div>
-          <p className="text-2xl font-bold text-beacon-text">{formatNumber(totalHouseholds)}</p>
+          <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--beacon-text)', fontVariantNumeric: 'tabular-nums' }}>{formatNumber(totalHouseholds)}</p>
         </div>
       </div>
 

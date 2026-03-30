@@ -35,14 +35,14 @@ export default function MarketingPage() {
     <div>
       <div className="mb-8">
         <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--beacon-text)' }}>Marketing Materials</h1>
-        <p className="text-sm text-beacon-text-muted mt-1">
+        <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginTop: 4 }}>
           ACCC pitch deck and collateral — ready for download
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
         {/* Pitch Deck */}
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-6">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border" style={{ padding: '20px 24px' }}>
           <div className="w-12 h-12 rounded-xl bg-beacon-primary-muted flex items-center justify-center mb-4">
             <Presentation size={22} className="text-beacon-primary" />
           </div>
@@ -66,7 +66,7 @@ export default function MarketingPage() {
         </div>
 
         {/* One-Pager */}
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-6">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border" style={{ padding: '20px 24px' }}>
           <div className="w-12 h-12 rounded-xl bg-beacon-accent-light flex items-center justify-center mb-4">
             <FileText size={22} className="text-beacon-accent" />
           </div>

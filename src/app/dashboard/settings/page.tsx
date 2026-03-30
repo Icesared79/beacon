@@ -13,7 +13,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border" style={{ padding: '20px 24px' }}>
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <User size={15} className="text-beacon-primary" />
             Profile
@@ -47,7 +47,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border" style={{ padding: '20px 24px' }}>
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Building2 size={15} className="text-beacon-primary" />
             Office
@@ -74,7 +74,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border" style={{ padding: '20px 24px' }}>
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Bell size={15} className="text-beacon-primary" />
             Notifications
@@ -93,7 +93,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-beacon-surface rounded-xl border border-beacon-border p-5">
+        <div className="bg-beacon-surface rounded-xl border border-beacon-border" style={{ padding: '20px 24px' }}>
           <h2 className="text-sm font-semibold text-beacon-text mb-4 flex items-center gap-2">
             <Settings size={15} className="text-beacon-primary" />
             Data

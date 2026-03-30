@@ -373,25 +373,25 @@ export default function ProspectDetailPage({
             <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--beacon-text)' }}>
               {prospect.address}
             </h1>
-            <p className="text-[15px] text-beacon-text mt-1">
+            <p style={{ fontSize: 13, color: 'var(--beacon-text)', marginTop: 4, lineHeight: 1.5 }}>
               {prospect.city}, {prospect.state} {prospect.zip}
-              {prospect.county && <span className="text-beacon-text-muted"> &middot; {prospect.county} County</span>}
+              {prospect.county && <span style={{ color: 'var(--beacon-text-muted)' }}> &middot; {prospect.county} County</span>}
             </p>
-            <p className="text-[15px] text-beacon-text-secondary mt-1">{formattedName}</p>
-            <p className="text-[13px] text-beacon-text-muted mt-0.5">{ownedSince}{yearsText}</p>
+            <p style={{ fontSize: 13, color: 'var(--beacon-text-secondary)', marginTop: 4, lineHeight: 1.5 }}>{formattedName}</p>
+            <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginTop: 2, lineHeight: 1.5 }}>{ownedSince}{yearsText}</p>
 
             {/* Service badges */}
             <div className="flex items-center gap-2 mt-3">
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-beacon-text-secondary">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-beacon-surface-alt text-beacon-text-secondary">
                 {suggestedService}
               </span>
               {prospect.is_absentee_owner && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                   Absentee Owner
                 </span>
               )}
               {prospect.is_long_hold && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400">
                   Long Hold
                 </span>
               )}
@@ -442,10 +442,10 @@ export default function ProspectDetailPage({
               { label: 'Office', value: prospect.office_city || 'Unassigned' },
             ].map((row, i) => (
               <div key={i} className="flex items-baseline justify-between py-2.5 border-b border-beacon-border/50 last:border-b-0">
-                <span className="text-sm text-beacon-text-muted">{row.label}</span>
+                <span style={{ fontSize: 13, color: 'var(--beacon-text-muted)', lineHeight: 1.5 }}>{row.label}</span>
                 <div className="text-right">
-                  <span className="text-sm font-medium text-beacon-text">{row.value}</span>
-                  {row.subtext && <p className="text-[11px] text-beacon-text-muted mt-0.5">{row.subtext}</p>}
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--beacon-text)', fontVariantNumeric: 'tabular-nums' }}>{row.value}</span>
+                  {row.subtext && <p style={{ fontSize: 11, color: 'var(--beacon-text-muted)', marginTop: 2 }}>{row.subtext}</p>}
                 </div>
               </div>
             ))}
@@ -506,8 +506,8 @@ export default function ProspectDetailPage({
       <div className="bg-beacon-surface rounded-xl shadow-sm mb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3">
           {/* Left — Hardship Timeline */}
-          <div className="p-6 lg:border-r lg:border-beacon-border/50">
-            <p className="text-xs font-semibold text-beacon-text-muted uppercase tracking-wider mb-4">Hardship Timeline</p>
+          <div style={{ padding: '20px 24px' }} className="lg:border-r lg:border-beacon-border/50">
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-text-muted)', marginBottom: 16 }}>HARDSHIP TIMELINE</p>
             <div className="relative">
               {events.length > 1 && (
                 <div className="absolute left-[5px] top-[10px] bottom-[10px] w-px bg-beacon-border" />
@@ -556,48 +556,48 @@ export default function ProspectDetailPage({
           </div>
 
           {/* Middle — Equity Position */}
-          <div className="p-6 lg:border-r lg:border-beacon-border/50 border-t lg:border-t-0 border-beacon-border/50">
-            <p className="text-xs font-semibold text-beacon-text-muted uppercase tracking-wider mb-4">Equity Position</p>
+          <div style={{ padding: '20px 24px' }} className="lg:border-r lg:border-beacon-border/50 border-t lg:border-t-0 border-beacon-border/50">
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-text-muted)', marginBottom: 16 }}>EQUITY POSITION</p>
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-beacon-text-muted mb-1">Assessed Value</p>
-                <p className="text-lg font-bold text-beacon-text">{formatCurrency(prospect.assessed_value)}</p>
+                <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginBottom: 4, lineHeight: 1.5 }}>Assessed Value</p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--beacon-text)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(prospect.assessed_value)}</p>
               </div>
               <div>
-                <p className="text-xs text-beacon-text-muted mb-1">Estimated Equity</p>
-                <p className={cn('text-lg font-bold', equityDisplay !== '\u2014' ? 'text-emerald-600' : 'text-beacon-text-muted')}>
+                <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginBottom: 4, lineHeight: 1.5 }}>Estimated Equity</p>
+                <p style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} className={equityDisplay !== '\u2014' ? 'text-emerald-600 dark:text-emerald-400' : 'text-beacon-text-muted'}>
                   {equityDisplay}
                 </p>
-                {equitySubtext && <p className="text-[10px] text-beacon-text-muted">{equitySubtext}</p>}
+                {equitySubtext && <p style={{ fontSize: 10, color: 'var(--beacon-text-muted)' }}>{equitySubtext}</p>}
               </div>
               <div>
-                <p className="text-xs text-beacon-text-muted mb-1">Last Sale Price</p>
-                <p className={cn('text-sm font-semibold', isTransfer ? 'text-beacon-text-muted' : 'text-beacon-text')}>{salePriceDisplay}</p>
+                <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginBottom: 4, lineHeight: 1.5 }}>Last Sale Price</p>
+                <p style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: isTransfer ? 'var(--beacon-text-muted)' : 'var(--beacon-text)' }}>{salePriceDisplay}</p>
               </div>
               <div>
-                <p className="text-xs text-beacon-text-muted mb-1">Years in Property</p>
-                <p className="text-sm font-semibold text-beacon-text">{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>
+                <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginBottom: 4, lineHeight: 1.5 }}>Years in Property</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--beacon-text)', fontVariantNumeric: 'tabular-nums' }}>{prospect.years_held ? `${Math.round(prospect.years_held)} years` : 'Unknown'}</p>
               </div>
               <div>
-                <p className="text-xs text-beacon-text-muted mb-1">County</p>
-                <p className="text-sm font-semibold text-beacon-text">{prospect.county || '\u2014'}</p>
+                <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginBottom: 4, lineHeight: 1.5 }}>County</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--beacon-text)' }}>{prospect.county || '\u2014'}</p>
               </div>
             </div>
           </div>
 
           {/* Right — Action Intelligence */}
-          <div className="p-6 border-t lg:border-t-0 border-beacon-border/50">
-            <p className="text-xs font-semibold text-beacon-text-muted uppercase tracking-wider mb-4">Action Intelligence</p>
+          <div style={{ padding: '20px 24px' }} className="border-t lg:border-t-0 border-beacon-border/50">
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-text-muted)', marginBottom: 16 }}>ACTION INTELLIGENCE</p>
 
             <div className="mb-5">
-              <p className="text-xs text-beacon-text-muted mb-1">Service Category</p>
-              <p className="text-base font-bold text-beacon-text">{suggestedService}</p>
+              <p style={{ fontSize: 13, color: 'var(--beacon-text-muted)', marginBottom: 4, lineHeight: 1.5 }}>Service Category</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--beacon-text)' }}>{suggestedService}</p>
             </div>
 
             {/* Contact Information */}
             <div className="pt-4 border-t border-beacon-border/50">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-medium text-beacon-text-muted">Contact Information</p>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--beacon-text-muted)' }}>CONTACT INFORMATION</p>
                 {!contactFetched && !contactLoading && (
                   <button
                     onClick={fetchContact}
