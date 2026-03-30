@@ -40,8 +40,9 @@ function toTitleCase(str: string): string {
 export function getSeverityBadgeClass(severity: string): 'red' | 'amber' | 'teal' | 'blue' {
   const s = severity.toLowerCase()
   if (['distress', 'critical', 'foreclosure', 'tax_lien'].includes(s)) return 'red'
-  if (['financial', 'bankruptcy', 'tax_delinquency', 'probate', 'warning', 'high', 'hmda'].includes(s)) return 'amber'
-  if (['ownership', 'equity', 'high_equity', 'property'].includes(s)) return 'teal'
+  if (['hmda_loan_denial', 'distress_flagged', 'financial', 'bankruptcy', 'tax_delinquency', 'probate', 'warning', 'high', 'hmda'].includes(s)) return 'amber'
+  if (['high_equity_confirmed', 'long_hold_confirmed', 'ownership', 'equity', 'high_equity', 'property'].includes(s)) return 'teal'
+  if (['high_vacancy'].includes(s)) return 'blue'
   return 'blue'
 }
 

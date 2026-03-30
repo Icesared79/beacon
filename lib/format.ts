@@ -43,18 +43,10 @@ export { formatOwnerName } from '@/lib/format-name'
 
 const SIGNAL_NAMES: Record<string, string> = {
   hmda_loan_denial: 'HMDA Loan Denial',
-  'hmda loan denial': 'HMDA Loan Denial',
   high_vacancy: 'High Vacancy',
-  'high vacancy': 'High Vacancy',
-  tax_lien: 'Tax Lien',
-  tax_delinquency: 'Tax Delinquency',
-  foreclosure: 'Foreclosure',
-  bankruptcy: 'Bankruptcy',
-  probate: 'Probate',
-  high_equity: 'High Equity',
-  high_equity_confirmed: 'High Equity',
   long_hold_confirmed: 'Long Hold',
   distress_flagged: 'Distress Flagged',
+  high_equity_confirmed: 'High Equity',
 }
 
 export function signalLabel(code: string): string {
@@ -79,39 +71,28 @@ export function severityLabel(raw: string): string {
   return SEVERITY_LABELS[raw.toLowerCase()] || titleCase(raw)
 }
 
-export function getSignalBadgeStyle(signalType: string, signalName: string): {
+export function getSignalBadgeStyle(code: string, _unused?: string): {
   background: string; color: string; border: string
 } {
-  const s = (signalType + ' ' + signalName).toLowerCase()
+  const c = code.toLowerCase()
 
-  if (s.includes('foreclosure') || s.includes('tax_lien') ||
-      s.includes('tax lien') || s.includes('lis_pendens') ||
-      s.includes('sheriff') || s.includes('reo')) {
-    return {
-      background: 'var(--badge-red-bg)',
-      color: 'var(--badge-red-text)',
-      border: '1px solid var(--badge-red-border)',
-    }
-  }
-  if (s.includes('bankruptcy') || s.includes('tax_delinq') ||
-      s.includes('tax delinq') || s.includes('probate') ||
-      s.includes('hmda') || s.includes('pre_foreclosure') ||
-      s.includes('pre-foreclosure') || s.includes('default') ||
-      s.includes('distress')) {
+  // Amber: hmda_loan_denial, distress_flagged
+  if (c.includes('hmda') || c.includes('distress')) {
     return {
       background: 'var(--badge-amber-bg)',
       color: 'var(--badge-amber-text)',
       border: '1px solid var(--badge-amber-border)',
     }
   }
-  if (s.includes('vacancy') || s.includes('vacant')) {
+  // Blue: high_vacancy
+  if (c.includes('vacancy') || c.includes('vacant')) {
     return {
       background: 'var(--badge-blue-bg)',
       color: 'var(--badge-blue-text)',
       border: '1px solid var(--badge-blue-border)',
     }
   }
-  // default: teal for equity/ownership/long hold
+  // Teal: high_equity_confirmed, long_hold_confirmed (and default)
   return {
     background: 'var(--badge-teal-bg)',
     color: 'var(--badge-teal-text)',
@@ -119,29 +100,24 @@ export function getSignalBadgeStyle(signalType: string, signalName: string): {
   }
 }
 
-export const CRITICAL_SIGNALS = [
-  'foreclosure', 'tax_lien', 'tax lien', 'lis_pendens',
-  'lis pendens', 'sheriff', 'reo', 'active_foreclosure',
+const CRITICAL_KEYWORDS = [
+  'foreclosure', 'tax_lien', 'lis_pendens', 'sheriff', 'reo',
 ]
 
-export const HIGH_NEED_SIGNALS = [
-  'bankruptcy', 'tax_delinq', 'probate', 'hmda',
-  'pre_foreclosure', 'pre-foreclosure', 'notice_of_default',
-  'mortgage_default', 'distress',
+const HIGH_NEED_KEYWORDS = [
+  'hmda_loan_denial', 'distress_flagged',
+  'bankruptcy', 'probate', 'tax_delinq',
 ]
 
-export function getHouseholdGroup(signals: Array<{ type: string; name: string }>): 'critical' | 'high_need' | 'monitor' {
-  const all = signals
-    .flatMap((s) => [s.type, s.name].map((v) => (v || '').toLowerCase()))
-    .join(' ')
-
-  if (CRITICAL_SIGNALS.some((k) => all.includes(k))) return 'critical'
-  if (HIGH_NEED_SIGNALS.some((k) => all.includes(k))) return 'high_need'
+export function getHouseholdGroup(signal_codes: string[]): 'critical' | 'high_need' | 'monitor' {
+  const codes = signal_codes.map((s) => s.toLowerCase())
+  if (CRITICAL_KEYWORDS.some((k) => codes.some((c) => c.includes(k)))) return 'critical'
+  if (HIGH_NEED_KEYWORDS.some((k) => codes.some((c) => c.includes(k)))) return 'high_need'
   return 'monitor'
 }
 
 export function getRiskLevel(signals: string[]): 'Urgent' | 'High Need' | 'Moderate' {
-  const group = getHouseholdGroup(signals.map((s) => ({ type: s, name: s })))
+  const group = getHouseholdGroup(signals)
   if (group === 'critical') return 'Urgent'
   if (group === 'high_need') return 'High Need'
   return 'Moderate'
@@ -153,8 +129,8 @@ export function sortSignalsBySeverity(codes: string[]): string[] {
 
 function signalSeverityRank(code: string): number {
   const c = code.toLowerCase()
-  if (CRITICAL_SIGNALS.some((k) => c.includes(k))) return 0
-  if (HIGH_NEED_SIGNALS.some((k) => c.includes(k))) return 1
+  if (CRITICAL_KEYWORDS.some((k) => c.includes(k))) return 0
+  if (HIGH_NEED_KEYWORDS.some((k) => c.includes(k))) return 1
   return 2
 }
 

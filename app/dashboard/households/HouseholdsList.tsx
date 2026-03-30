@@ -67,7 +67,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
     const high: Household[] = []
     const monitor: Household[] = []
     for (const h of filtered) {
-      const g = getHouseholdGroup(h.signal_codes.map((c) => ({ type: c, name: c })))
+      const g = getHouseholdGroup(h.signal_codes)
       if (g === 'critical') critical.push(h)
       else if (g === 'high_need') high.push(h)
       else monitor.push(h)
@@ -169,7 +169,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
       <PriorityGroup
         id="high"
         label="HIGH NEED"
-        description="Tax delinquency, bankruptcy, or probate — outreach this week"
+        description="HMDA loan denial or distress signal — outreach this week"
         accentColor="var(--accent-amber)"
         labelColor="var(--accent-amber-text)"
         items={groups.high}
@@ -180,7 +180,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
       <PriorityGroup
         id="monitor"
         label="MONITOR"
-        description="Early distress indicators — watch list"
+        description="Equity or vacancy signal — watch list"
         accentColor="var(--accent-blue)"
         labelColor="var(--accent-blue-text)"
         items={groups.monitor}

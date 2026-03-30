@@ -19,10 +19,10 @@ import {
 } from '@/lib/format'
 
 function riskBadgeFromSignals(signalCodes: string[]) {
-  const group = getHouseholdGroup(signalCodes.map((c) => ({ type: c, name: c })))
-  if (group === 'critical') return { label: 'Urgent', ...getSignalBadgeStyle('foreclosure', 'foreclosure') }
-  if (group === 'high_need') return { label: 'High Need', ...getSignalBadgeStyle('bankruptcy', 'bankruptcy') }
-  return { label: 'Moderate', ...getSignalBadgeStyle('vacancy', 'vacancy') }
+  const group = getHouseholdGroup(signalCodes)
+  if (group === 'critical') return { label: 'Urgent', ...getSignalBadgeStyle('foreclosure') }
+  if (group === 'high_need') return { label: 'High Need', ...getSignalBadgeStyle('hmda_loan_denial') }
+  return { label: 'Moderate', ...getSignalBadgeStyle('high_equity_confirmed') }
 }
 
 function deriveService(codes: string[]): string {
@@ -373,16 +373,16 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
 function signalDotColor(code: string): string {
   const c = code.toLowerCase()
-  if (/foreclosure|tax.?lien|lis.?pendens/.test(c)) return '#ef4444'
-  if (/bankruptcy|tax.?delinquen|hmda|probate|notice.?of.?default/.test(c)) return '#f59e0b'
-  if (/equity|long.?hold|vacanc|ownership/.test(c)) return '#10b981'
+  if (c.includes('hmda') || c.includes('distress')) return '#f59e0b'
+  if (c.includes('vacancy')) return '#3b82f6'
+  if (c.includes('equity') || c.includes('long_hold')) return '#10b981'
   return 'var(--text-muted)'
 }
 
 function signalImpact(code: string): string {
   const c = code.toLowerCase()
-  if (/foreclosure|tax.?lien|lis.?pendens|bankruptcy/.test(c)) return 'High impact'
-  if (/tax.?delinquen|hmda|probate/.test(c)) return 'Moderate impact'
+  if (c.includes('hmda') || c.includes('distress')) return 'High impact'
+  if (c.includes('vacancy')) return 'Moderate impact'
   return 'Low impact'
 }
 
