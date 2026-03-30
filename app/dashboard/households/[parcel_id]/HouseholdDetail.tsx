@@ -207,20 +207,28 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sortSignalsBySeverity(h.signal_codes).map((code) => {
                 const signal = signals.find((s) => s.code === code)
+                const desc = SIGNAL_DESCRIPTIONS[code] || ''
                 return (
-                  <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{
-                      ...getSignalBadgeStyle(code, signal?.label || code),
-                      fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                      padding: '2px 8px', borderRadius: 'var(--radius-sm)',
-                      textTransform: 'uppercase', whiteSpace: 'nowrap',
-                    }}>
-                      {signalLabel(code)}
-                    </span>
-                    {signal?.detected_at && (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        Detected {new Date(signal.detected_at).toLocaleDateString()}
+                  <div key={code}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        ...getSignalBadgeStyle(code, signal?.label || code),
+                        fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                        padding: '2px 8px', borderRadius: 'var(--radius-sm)',
+                        textTransform: 'uppercase', whiteSpace: 'nowrap',
+                      }}>
+                        {signalLabel(code)}
                       </span>
+                      {signal?.detected_at && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          Detected {new Date(signal.detected_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {desc && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                        {desc}
+                      </div>
                     )}
                   </div>
                 )
@@ -234,51 +242,8 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
       </div>
 
-      {/* 4. Hardship Timeline | Equity Position | Action Intelligence */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
-        {/* Hardship Timeline */}
-        <div style={panel}>
-          <div style={sectionLabel}>Hardship Timeline</div>
-          {signals.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[...signals]
-                .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())
-                .map((s, i) => {
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, width: 72 }}>
-                        {new Date(s.detected_at).toLocaleDateString()}
-                      </span>
-                      <span style={{
-                        ...getSignalBadgeStyle(s.code, s.label || s.category),
-                        fontSize: 9, fontWeight: 700, padding: '1px 6px',
-                        borderRadius: 'var(--radius-sm)', textTransform: 'uppercase',
-                        whiteSpace: 'nowrap', flexShrink: 0,
-                      }}>
-                        {severityLabel(s.category)}
-                      </span>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                        {s.label || signalLabel(s.code)}
-                      </span>
-                    </div>
-                  )
-                })}
-            </div>
-          ) : h.signal_codes.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {sortSignalsBySeverity(h.signal_codes).map((code) => (
-                <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: getSignalBadgeStyle(code, code).color }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{signalLabel(code)}</span>
-                </div>
-              ))}
-              {firstDate && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>First detected: {firstDate}</div>}
-            </div>
-          ) : (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No signals detected</p>
-          )}
-        </div>
-
+      {/* 4. Equity Position | Outreach Intelligence */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Equity Position */}
         <div style={panel}>
           <div style={sectionLabel}>Equity Position</div>
@@ -516,27 +481,6 @@ function OutreachIntelligence({
     <div>
       <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 16 }}>
         Outreach Intelligence
-      </div>
-
-      {/* Recommended Action */}
-      <div style={{
-        borderLeft: `3px solid ${config.border}`,
-        borderRadius: '0 6px 6px 0',
-        background: 'var(--bg-elevated)',
-        padding: '14px 16px',
-        marginBottom: 16,
-      }}>
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: config.labelColor, fontWeight: 700 }}>
-          Recommended Action
-        </div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
-          {config.action}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-          {signalCount === 0
-            ? 'No distress signals detected'
-            : `${signalCount} active distress signal${signalCount === 1 ? '' : 's'} detected`}
-        </div>
       </div>
 
       {/* Score Drivers */}
