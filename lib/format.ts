@@ -134,6 +134,82 @@ function signalSeverityRank(code: string): number {
   return 2
 }
 
+export type EquityConfidence = 'verified' | 'estimated' | 'unverified'
+
+export interface EquityDisplay {
+  confidence: EquityConfidence
+  label: string
+  value: string
+  note: string
+  badgeText: string
+  badgeColor: 'teal' | 'amber' | 'red'
+}
+
+export function getEquityDisplay(
+  assessed_value: number | null,
+  estimated_equity: number | null,
+  last_sale_price: number | null,
+  last_sale_date: string | null,
+  years_held: number | null
+): EquityDisplay {
+  const hasValue = assessed_value && assessed_value > 0
+  const hasSale = last_sale_price && last_sale_price > 1
+  const hasYears = years_held && years_held > 0
+  const hasDate = !!last_sale_date
+
+  // CONFIDENCE LEVEL 1 — VERIFIED
+  if (hasSale && (hasYears || hasDate)) {
+    return {
+      confidence: 'verified',
+      label: 'Est. Equity',
+      value: estimated_equity
+        ? '$' + estimated_equity.toLocaleString()
+        : assessed_value
+          ? '~$' + assessed_value.toLocaleString()
+          : '—',
+      note: 'Based on sale price · ' +
+        (years_held ? years_held + ' years held' : 'sale date on record'),
+      badgeText: 'Verified',
+      badgeColor: 'teal',
+    }
+  }
+
+  // CONFIDENCE LEVEL 2 — ESTIMATED
+  if (hasValue && hasYears && years_held > 5) {
+    return {
+      confidence: 'estimated',
+      label: 'Potential Equity',
+      value: assessed_value
+        ? '~$' + assessed_value.toLocaleString()
+        : '—',
+      note: 'Based on assessed value — mortgage status unknown',
+      badgeText: 'Estimated',
+      badgeColor: 'amber',
+    }
+  }
+
+  // CONFIDENCE LEVEL 3 — UNVERIFIED
+  if (hasValue) {
+    return {
+      confidence: 'unverified',
+      label: 'Assessed Value',
+      value: '$' + assessed_value.toLocaleString(),
+      note: 'No sale data on record — equity cannot be estimated',
+      badgeText: 'Unverified',
+      badgeColor: 'red',
+    }
+  }
+
+  return {
+    confidence: 'unverified',
+    label: 'Equity',
+    value: '—',
+    note: 'Insufficient data',
+    badgeText: 'Unverified',
+    badgeColor: 'red',
+  }
+}
+
 export function formatDistressDuration(dateStr: string | null): string {
   if (!dateStr) return '—'
   const days = Math.floor(

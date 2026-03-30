@@ -13,6 +13,7 @@ import {
   sortSignalsBySeverity,
   titleCase,
   formatDistressDuration,
+  getEquityDisplay,
 } from '@/lib/format'
 
 interface Props {
@@ -351,14 +352,30 @@ function HouseholdRow({
       </div>
 
       {/* Equity */}
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-          {formatCurrency(h.estimated_equity)}
-        </div>
-        {!h.last_sale_price && h.assessed_value && (
-          <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>Based on assessed value</div>
-        )}
-      </div>
+      {(() => {
+        const eq = getEquityDisplay(
+          h.assessed_value,
+          h.estimated_equity,
+          h.last_sale_price,
+          h.last_sale_date ?? null,
+          h.years_held ?? null
+        )
+        return (
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+              {eq.value}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: eq.badgeColor === 'teal' ? '#10b981' : eq.badgeColor === 'amber' ? '#f59e0b' : '#ef4444',
+                display: 'inline-block', flexShrink: 0,
+              }} />
+              {eq.note}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* In Distress */}
       <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
