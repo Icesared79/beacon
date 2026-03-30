@@ -101,10 +101,10 @@ export default async function CoveragePage() {
   return (
     <DashboardShell lastUpdated={stats.last_updated}>
       <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: 14, marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
           Coverage Intelligence
         </h1>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
           Where Beacon is working — and where it isn&apos;t yet
         </p>
       </div>

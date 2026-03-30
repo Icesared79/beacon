@@ -55,9 +55,9 @@ const panel: React.CSSProperties = {
 const sectionLabel: React.CSSProperties = {
   fontSize: 10,
   textTransform: 'uppercase',
-  letterSpacing: '0.06em',
+  letterSpacing: '0.08em',
   color: 'var(--text-muted)',
-  fontWeight: 600,
+  fontWeight: 700,
   marginBottom: 16,
 }
 
@@ -109,7 +109,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
       <div style={{ ...panel, borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderBottom: '1px solid var(--border-subtle)', padding: 24, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{fullAddress}</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>{fullAddress}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <span style={{
               ...risk,

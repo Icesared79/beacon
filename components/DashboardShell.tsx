@@ -57,7 +57,7 @@ export function DashboardShell({
             <span
               style={{
                 fontSize: 15,
-                fontWeight: 600,
+                fontWeight: 700,
                 letterSpacing: '0.02em',
                 color: 'var(--text-primary)',
               }}
@@ -76,14 +76,14 @@ export function DashboardShell({
                   key={item.href}
                   href={item.href}
                   style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
+                    letterSpacing: '0.05em',
                     fontWeight: 500,
                     color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                     background: isActive ? 'var(--bg-elevated)' : 'transparent',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '5px 10px',
+                    borderRadius: 4,
+                    padding: '5px 12px',
                     textDecoration: 'none',
                     transition: 'color 0.15s ease, background 0.15s ease',
                   }}

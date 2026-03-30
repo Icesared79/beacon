@@ -82,9 +82,15 @@ export function severityLabel(raw: string): string {
 export type SignalBadgeColor = 'red' | 'amber' | 'teal' | 'blue'
 
 export function signalBadgeColor(code: string): SignalBadgeColor {
-  if (/foreclosure|tax.?lien|distress/i.test(code)) return 'red'
-  if (/bankruptcy|probate|delinquen/i.test(code)) return 'amber'
-  if (/vacancy|high.?equity/i.test(code)) return 'teal'
+  const c = code.toLowerCase()
+  // RED: foreclosure, tax_lien, lis_pendens, sheriff_sale, reo, active_foreclosure
+  if (/foreclosure|tax.?lien|lis.?pendens|sheriff.?sale|reo|active.?foreclosure/i.test(c)) return 'red'
+  // AMBER: bankruptcy, tax_delinquency, probate, hmda, distress, pre_foreclosure, notice_of_default, mortgage_default
+  if (/bankruptcy|tax.?delinquen|probate|hmda|distress|pre.?foreclosure|notice.?of.?default|mortgage.?default/i.test(c)) return 'amber'
+  // TEAL: high_equity, long_hold, ownership, equity
+  if (/high.?equity|long.?hold|ownership|equity/i.test(c)) return 'teal'
+  // BLUE: high_vacancy, vacancy
+  if (/vacanc/i.test(c)) return 'blue'
   return 'blue'
 }
 

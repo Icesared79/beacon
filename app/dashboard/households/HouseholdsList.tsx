@@ -105,7 +105,7 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
       {/* Page header */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: 14, marginBottom: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', margin: 0 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
             Households
           </h1>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
