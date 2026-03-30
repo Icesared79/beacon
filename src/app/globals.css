@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --beacon-primary: #1B5EA8;
+  --beacon-primary-dark: #144A87;
+  --beacon-primary-light: #2B74C8;
+  --beacon-primary-muted: #EBF2FB;
+  --beacon-accent: #E8540A;
+  --beacon-accent-light: #FEF0E8;
+  --beacon-critical: #DC2626;
+  --beacon-high: #D97706;
+  --beacon-warning: #CA8A04;
+  --beacon-info: #2563EB;
+  --beacon-success: #16A34A;
+  --beacon-bg: #F8FAFC;
+  --beacon-surface: #FFFFFF;
+  --beacon-surface-alt: #F1F5F9;
+  --beacon-border: #E2E8F0;
+  --beacon-border-dark: #CBD5E1;
+  --beacon-text: #0F172A;
+  --beacon-text-secondary: #475569;
+  --beacon-text-muted: #94A3B8;
+  --bg-surface: var(--beacon-surface);
+  --bg-elevated: var(--beacon-surface-alt);
+  --text-primary: var(--beacon-text);
+  --text-muted: var(--beacon-text-muted);
+  --border-subtle: var(--beacon-border);
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+}
+
+.dark {
+  --beacon-primary: #4B9AE8;
+  --beacon-primary-dark: #6BB0F0;
+  --beacon-primary-light: #3A88D4;
+  --beacon-primary-muted: #1A2A42;
+  --beacon-accent: #F0783A;
+  --beacon-accent-light: #2A1A10;
+  --beacon-critical: #EF4444;
+  --beacon-high: #F59E0B;
+  --beacon-warning: #EAB308;
+  --beacon-info: #60A5FA;
+  --beacon-success: #34D399;
+  --beacon-bg: #0B1120;
+  --beacon-surface: #111827;
+  --beacon-surface-alt: #1E293B;
+  --beacon-border: #1E293B;
+  --beacon-border-dark: #334155;
+  --beacon-text: #F1F5F9;
+  --beacon-text-secondary: #CBD5E1;
+  --beacon-text-muted: #64748B;
+  --bg-surface: var(--beacon-surface);
+  --bg-elevated: var(--beacon-surface-alt);
+  --text-primary: var(--beacon-text);
+  --text-muted: var(--beacon-text-muted);
+  --border-subtle: var(--beacon-border);
+  --background: #0B1120;
+  --foreground: #F1F5F9;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-beacon-primary: var(--beacon-primary);
+  --color-beacon-primary-dark: var(--beacon-primary-dark);
+  --color-beacon-primary-light: var(--beacon-primary-light);
+  --color-beacon-primary-muted: var(--beacon-primary-muted);
+  --color-beacon-accent: var(--beacon-accent);
+  --color-beacon-accent-light: var(--beacon-accent-light);
+  --color-beacon-critical: var(--beacon-critical);
+  --color-beacon-high: var(--beacon-high);
+  --color-beacon-warning: var(--beacon-warning);
+  --color-beacon-info: var(--beacon-info);
+  --color-beacon-success: var(--beacon-success);
+  --color-beacon-bg: var(--beacon-bg);
+  --color-beacon-surface: var(--beacon-surface);
+  --color-beacon-surface-alt: var(--beacon-surface-alt);
+  --color-beacon-border: var(--beacon-border);
+  --color-beacon-border-dark: var(--beacon-border-dark);
+  --color-beacon-text: var(--beacon-text);
+  --color-beacon-text-secondary: var(--beacon-text-secondary);
+  --color-beacon-text-muted: var(--beacon-text-muted);
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--beacon-bg);
+  color: var(--beacon-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--beacon-border-dark);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--beacon-text-muted);
+}
+
+/* Score bar animation */
+@keyframes score-fill {
+  from { width: 0%; }
+  to { width: var(--score-width); }
+}
+
+.score-bar-fill {
+  animation: score-fill 0.8s ease-out forwards;
+}
+
+/* Fade in */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
