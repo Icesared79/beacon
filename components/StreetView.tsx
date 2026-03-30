@@ -1,52 +1,34 @@
 'use client'
 
-import { useRef } from 'react'
-
-const STATE_ABBREV: Record<string, string> = {
-  Pennsylvania: 'PA',
-  'New York': 'NY',
-  Florida: 'FL',
-  Colorado: 'CO',
-  Georgia: 'GA',
-  Texas: 'TX',
-  California: 'CA',
-  Connecticut: 'CT',
-  Massachusetts: 'MA',
-  'New Jersey': 'NJ',
-  Ohio: 'OH',
-  Illinois: 'IL',
-  Maryland: 'MD',
-}
-
-function cleanAddress(
-  address: string | null | undefined,
-  city: string | null | undefined,
-  state: string | null | undefined,
-  zip: string | null | undefined,
+function buildStreetViewUrl(
+  address: string | null,
+  city: string | null,
+  state: string | null,
+  zip: string | null,
+  apiKey: string | undefined,
 ): string | null {
-  if (!address || !state) return null
+  if (!apiKey) return null
 
-  const parts: string[] = [address]
-  const normalizedState = STATE_ABBREV[state] || state
+  const parts = [address, city, state, zip]
+    .map(p => (p ?? '').trim())
+    .filter(p => p.length > 0 && p.toLowerCase() !== 'null')
 
-  if (city && !address.toUpperCase().includes(city.toUpperCase())) {
-    parts.push(city)
-  }
+  if (parts.length < 2) return null
 
-  parts.push(normalizedState)
+  const joined = parts.join(', ')
+  const clean = joined.replace(/,\s*,/g, ',').trim()
 
-  if (zip) {
-    parts.push(zip.split('-')[0])
-  }
+  if (!/\d/.test(clean) || clean.length < 10) return null
 
-  let clean = parts.join(', ')
-  clean = clean.replace(/,\s*,/g, ',')
-  clean = clean.replace(/\b(null|undefined|none)\b/gi, '')
-  clean = clean.replace(/,\s*,/g, ',').replace(/^\s*,|,\s*$/g, '').replace(/\s+/g, ' ').trim()
+  const encoded = encodeURIComponent(clean)
 
-  if (clean.length < 10 || !/\d/.test(clean)) return null
-
-  return clean
+  return (
+    `https://maps.googleapis.com/maps/api/streetview`
+    + `?size=1200x240`
+    + `&location=${encoded}`
+    + `&key=${apiKey}`
+    + `&return_error_codes=true`
+  )
 }
 
 export function StreetView({
@@ -60,83 +42,99 @@ export function StreetView({
   state: string
   zip: string | null
 }) {
-  const fallbackRef = useRef<HTMLDivElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+  const url = buildStreetViewUrl(
+    address,
+    city,
+    state,
+    zip,
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+  )
 
-  const clean = cleanAddress(address, city, state, zip)
+  console.log('[StreetView] url:', url)
 
-  if (!clean || !apiKey) {
+  if (!url) {
     return <Fallback />
   }
 
-  const embedUrl = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${encodeURIComponent(clean)}`
-
-  console.log('[StreetView] Cleaned address:', clean)
-  console.log('[StreetView] Embed URL:', embedUrl)
-
   return (
-    <div>
-      <iframe
-        ref={iframeRef}
-        src={embedUrl}
+    <>
+      <img
+        src={url}
+        alt="Property street view"
         style={{
           width: '100%',
-          height: 220,
-          border: 'none',
-          borderRadius: 'var(--radius-lg)',
+          height: '220px',
+          objectFit: 'cover',
+          borderRadius: '6px',
+          border: '1px solid var(--border-subtle)',
           display: 'block',
         }}
-        loading="lazy"
-        allowFullScreen
-        referrerPolicy="no-referrer-when-downgrade"
-        onError={() => {
-          if (iframeRef.current) iframeRef.current.style.display = 'none'
-          if (fallbackRef.current) fallbackRef.current.style.display = 'flex'
+        onError={(e) => {
+          e.currentTarget.style.display = 'none'
+          const fb = document.getElementById('sv-fallback')
+          if (fb) fb.style.display = 'flex'
         }}
       />
       <div
-        ref={fallbackRef}
+        id="sv-fallback"
         style={{
           display: 'none',
-          height: 100,
+          height: '100px',
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: '6px',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8,
+          gap: '8px',
           color: 'var(--text-muted)',
-          fontSize: 12,
+          fontSize: '12px',
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-          <circle cx="12" cy="10" r="3" />
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+          <circle cx="12" cy="9" r="2.5" />
         </svg>
         <span>Property view unavailable</span>
       </div>
-    </div>
+    </>
   )
 }
 
 function Fallback() {
   return (
-    <div style={{
-      background: 'var(--bg-elevated)',
-      border: '1px solid var(--border-subtle)',
-      borderRadius: 'var(--radius-lg)',
-      height: 100,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      color: 'var(--text-muted)',
-      fontSize: 12,
-    }}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-        <circle cx="12" cy="10" r="3" />
+    <div
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: '6px',
+        height: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        color: 'var(--text-muted)',
+        fontSize: 12,
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      >
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+        <circle cx="12" cy="9" r="2.5" />
       </svg>
       <span>Property view unavailable</span>
     </div>
