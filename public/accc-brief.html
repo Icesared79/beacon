@@ -1,641 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Beacon — ACCC Demo Brief</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --font-sans: 'Inter', 'Helvetica Neue', sans-serif;
-      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-      --beacon-blue: #1B5EA8;
-      --beacon-blue-light: #60a5fa;
-      --beacon-blue-pale: #93c5fd;
-      --bg-base: #f8fafc;
-      --bg-surface: #ffffff;
-      --bg-elevated: #f1f5f9;
-      --border-subtle: #e2e8f0;
-      --border-default: #bfdbfe;
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --text-muted: #94a3b8;
-      --accent-blue: #2563eb;
-      --accent-teal: #059669;
-      --accent-teal-text: #047857;
-      --accent-amber: #d97706;
-      --accent-red: #dc2626;
-      --badge-teal-bg: #ecfdf5;
-      --badge-teal-text: #065f46;
-      --badge-teal-border: #a7f3d0;
-      --badge-blue-bg: #eff6ff;
-      --badge-blue-text: #1e40af;
-      --badge-blue-border: #bfdbfe;
-      --badge-amber-bg: #fffbeb;
-      --badge-amber-text: #92400e;
-      --badge-amber-border: #fde68a;
-      --badge-red-bg: #fef2f2;
-      --badge-red-text: #991b1b;
-      --badge-red-border: #fecaca;
-      --radius-sm: 3px;
-      --radius-md: 4px;
-      --radius-lg: 8px;
-    }
-
-    body {
-      font-family: var(--font-sans);
-      background: var(--bg-base);
-      color: var(--text-primary);
-      font-size: 14px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* ── Hero ── */
-    .hero {
-      background: var(--beacon-blue);
-      padding: 48px;
-      color: #fff;
-    }
-    .hero-inner {
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    .hero-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 48px;
-    }
-    .hero-logo .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--beacon-blue-light);
-    }
-    .hero-logo .name {
-      font-weight: 600;
-      font-size: 18px;
-      letter-spacing: 0.02em;
-    }
-    .hero-logo .sub {
-      color: var(--beacon-blue-pale);
-      font-size: 12px;
-    }
-    .hero h1 {
-      font-size: 40px;
-      font-weight: 700;
-      line-height: 1.15;
-      margin-bottom: 16px;
-      max-width: 700px;
-    }
-    .hero .subtitle {
-      font-size: 17px;
-      color: var(--beacon-blue-pale);
-      line-height: 1.6;
-      max-width: 640px;
-      margin-bottom: 40px;
-    }
-    .hero-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 24px;
-      max-width: 640px;
-    }
-    .hero-stats .stat-val {
-      font-family: var(--font-mono);
-      font-size: 26px;
-      font-weight: 700;
-    }
-    .hero-stats .stat-label {
-      font-size: 12px;
-      color: var(--beacon-blue-pale);
-      margin-top: 4px;
-    }
-    .hero-badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      background: rgba(255,255,255,0.15);
-      color: #fff;
-      padding: 4px 10px;
-      border-radius: var(--radius-sm);
-      margin-bottom: 16px;
-    }
-
-    /* ── Content ── */
-    .content {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 48px;
-    }
-
-    .section {
-      margin-bottom: 48px;
-    }
-    .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--accent-blue);
-      margin-bottom: 16px;
-    }
-    .section h2 {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-    .section p {
-      color: var(--text-secondary);
-      font-size: 14px;
-      line-height: 1.7;
-      max-width: 720px;
-    }
-
-    /* ── Cards grid ── */
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-top: 20px;
-    }
-    .card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-    }
-    .card-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      margin-bottom: 14px;
-    }
-    .card-icon.blue { background: var(--badge-blue-bg); color: var(--badge-blue-text); }
-    .card-icon.teal { background: var(--badge-teal-bg); color: var(--badge-teal-text); }
-    .card-icon.amber { background: var(--badge-amber-bg); color: var(--badge-amber-text); }
-    .card-icon.red { background: var(--badge-red-bg); color: var(--badge-red-text); }
-    .card h3 {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    .card p {
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-
-    /* ── Signal list ── */
-    .signal-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 20px;
-    }
-    .signal-item {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .signal-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .signal-dot.red { background: var(--accent-red); }
-    .signal-dot.amber { background: var(--accent-amber); }
-    .signal-dot.teal { background: var(--accent-teal); }
-    .signal-dot.blue { background: var(--accent-blue); }
-    .signal-item span {
-      font-size: 13px;
-      color: var(--text-primary);
-      font-weight: 500;
-    }
-
-    /* ── Timeline ── */
-    .timeline {
-      margin-top: 20px;
-      position: relative;
-      padding-left: 28px;
-    }
-    .timeline::before {
-      content: '';
-      position: absolute;
-      left: 6px;
-      top: 4px;
-      bottom: 4px;
-      width: 2px;
-      background: var(--border-default);
-    }
-    .timeline-item {
-      position: relative;
-      margin-bottom: 24px;
-    }
-    .timeline-item::before {
-      content: '';
-      position: absolute;
-      left: -24px;
-      top: 6px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--accent-blue);
-      border: 2px solid var(--bg-base);
-    }
-    .timeline-item .phase {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--accent-blue);
-      margin-bottom: 4px;
-    }
-    .timeline-item h4 {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .timeline-item p {
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
-    /* ── Divider ── */
-    .divider {
-      height: 1px;
-      background: var(--border-subtle);
-      margin: 48px 0;
-    }
-
-    /* ── Footer ── */
-    .footer {
-      text-align: center;
-      padding: 32px 48px;
-      border-top: 1px solid var(--border-subtle);
-    }
-    .footer p {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .footer a {
-      color: var(--accent-blue);
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    /* ── Table ── */
-    .coverage-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      font-size: 13px;
-    }
-    .coverage-table th {
-      text-align: left;
-      font-weight: 600;
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .coverage-table td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border-subtle);
-      color: var(--text-primary);
-    }
-    .coverage-table tr:last-child td {
-      border-bottom: none;
-    }
-    .coverage-table .mono {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 500;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: var(--radius-sm);
-    }
-    .badge.live {
-      background: var(--badge-teal-bg);
-      color: var(--badge-teal-text);
-      border: 1px solid var(--badge-teal-border);
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 768px) {
-      .hero { padding: 32px 24px; }
-      .hero h1 { font-size: 28px; }
-      .hero-stats { grid-template-columns: repeat(2, 1fr); }
-      .content { padding: 32px 24px; }
-      .cards { grid-template-columns: 1fr; }
-      .signal-grid { grid-template-columns: 1fr; }
-    }
-
-    @media print {
-      .hero { padding: 32px; }
-      .content { padding: 32px; }
-      body { font-size: 11px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beacon — ACCC Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #0d1424; --navy-2: #162033; --navy-3: #1e2d45;
+    --blue: #2563eb; --blue-2: #3b82f6; --blue-3: #93c5fd;
+    --teal: #0d9488; --teal-2: #14b8a6;
+    --amber: #d97706; --amber-2: #f59e0b;
+    --surface: #ffffff; --bg: #f1f5f9; --border: #e2e8f0;
+    --text: #0f172a; --text-2: #475569; --text-3: #94a3b8;
+  }
+  body { font-family: "DM Sans", sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; padding: 36px 20px 80px; }
+  .page { max-width: 860px; margin: 0 auto; }
+  .header { background: var(--navy); border-radius: 16px; overflow: hidden; margin-bottom: 16px; position: relative; }
+  .header-accent { position: absolute; top: 0; right: 0; width: 320px; height: 100%; background: linear-gradient(135deg, transparent 40%, rgba(37,99,235,0.12) 100%); pointer-events: none; }
+  .header-inner { padding: 36px 40px; position: relative; z-index: 1; }
+  .logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .logo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue-2); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+  .logo-text { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #4b6080; }
+  .logo-sep { color: #2a3f5a; margin: 0 2px; }
+  .header h1 { font-size: 32px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 10px; }
+  .header h1 em { font-style: normal; color: var(--blue-3); }
+  .header-desc { font-size: 14px; color: #4b6080; font-weight: 300; max-width: 500px; line-height: 1.7; }
+  .header-bar { background: var(--navy-2); border-top: 1px solid rgba(255,255,255,0.04); padding: 14px 40px; display: flex; align-items: center; gap: 6px; }
+  .header-bar-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-2); margin-right: 4px; }
+  .header-bar-text { font-size: 12px; color: #3d5a78; }
+  .header-bar-text strong { color: #64748b; font-weight: 500; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px 18px; border-top: 3px solid; }
+  .stat-1 { border-top-color: var(--blue); }
+  .stat-2 { border-top-color: var(--teal); }
+  .stat-3 { border-top-color: var(--amber); }
+  .stat-4 { border-top-color: #8b5cf6; }
+  .stat-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+  .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .stat-sub { font-size: 11px; color: var(--text-3); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; margin-bottom: 14px; }
+  .card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+  .card-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .overview p { font-size: 15px; color: var(--text-2); line-height: 1.8; margin-bottom: 14px; font-weight: 300; }
+  .overview p:last-child { margin-bottom: 0; }
+  .video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .video-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #f8fafc; text-decoration: none; display: block; transition: border-color 0.15s, box-shadow 0.15s; }
+  .video-card:hover { border-color: var(--blue); box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+  .video-thumb-static { background: var(--navy); height: 160px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .video-thumb-static::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(37,99,235,0.15) 0%, transparent 60%); }
+  .play-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; transition: background 0.15s; }
+  .video-card:hover .play-btn { background: var(--blue); border-color: var(--blue); }
+  .play-icon { width: 0; height: 0; border-style: solid; border-width: 9px 0 9px 18px; border-color: transparent transparent transparent rgba(255,255,255,0.9); margin-left: 4px; }
+  .video-card:hover .play-icon { border-color: transparent transparent transparent #fff; }
+  .video-label-text { position: absolute; bottom: 12px; left: 16px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.3); z-index: 1; }
+  .video-meta { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .video-num { width: 22px; height: 22px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .video-info strong { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 1px; }
+  .video-info span { font-size: 11px; color: var(--text-3); }
+  .video-open-hint { margin-left: auto; font-size: 11px; color: var(--blue); font-weight: 500; flex-shrink: 0; }
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step { display: grid; grid-template-columns: 36px 1fr; gap: 16px; align-items: start; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .step-num { width: 32px; height: 32px; border-radius: 8px; background: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--blue-3); flex-shrink: 0; margin-top: 1px; }
+  .step h4 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+  .step p { font-size: 13px; color: var(--text-2); line-height: 1.65; }
+  .coverage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .cov-item { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .cov-state { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .cov-count { font-size: 12px; font-weight: 600; color: var(--teal); font-variant-numeric: tabular-nums; margin-bottom: 1px; }
+  .cov-label { font-size: 10px; color: var(--text-3); }
+  .access-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .access-left h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .access-left p { font-size: 13px; color: var(--text-2); line-height: 1.7; margin-bottom: 14px; font-weight: 300; }
+  .access-link { display: inline-flex; align-items: center; gap: 6px; font-family: "DM Mono", monospace; font-size: 13px; color: var(--blue); text-decoration: none; background: #eff6ff; border: 1px solid #bfdbfe; padding: 8px 14px; border-radius: 6px; transition: background 0.15s; }
+  .access-link:hover { background: #dbeafe; }
+  .creds { display: flex; flex-direction: column; gap: 8px; }
+  .cred { display: flex; align-items: center; gap: 14px; padding: 11px 16px; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; }
+  .cred-key { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); width: 64px; flex-shrink: 0; }
+  .cred-val { font-family: "DM Mono", monospace; font-size: 13px; color: var(--text); font-weight: 500; }
+  .access-note { margin-top: 10px; font-size: 12px; color: var(--text-3); line-height: 1.7; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; }
+  .footer { margin-top: 28px; padding: 0 4px; display: flex; justify-content: space-between; align-items: center; }
+  .footer span { font-size: 12px; color: var(--text-3); }
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .video-grid, .access-grid { grid-template-columns: 1fr; }
+    .coverage-grid { grid-template-columns: repeat(3, 1fr); }
+    .header h1 { font-size: 26px; }
+    .header-inner { padding: 28px 24px; }
+    .header-bar { padding: 14px 24px; }
+    .card { padding: 24px 20px; }
+  }
+</style>
 </head>
 <body>
-
-  <!-- ── Hero ── -->
-  <div class="hero">
-    <div class="hero-inner">
-      <div class="hero-logo">
-        <span class="dot"></span>
-        <div>
-          <p class="name">Beacon</p>
-          <p class="sub">by American Consumer Credit Counseling</p>
-        </div>
+<div class="page">
+  <div class="header">
+    <div class="header-accent"></div>
+    <div class="header-inner">
+      <div class="logo-row">
+        <div class="logo-dot"></div>
+        <span class="logo-text">Beacon</span>
+        <span class="logo-sep">&middot;</span>
+        <span class="logo-text">Red Planet Data</span>
       </div>
-
-      <span class="hero-badge">Demo Brief — March 2026</span>
-      <h1>Community Outreach Intelligence for ACCC</h1>
-      <p class="subtitle">
-        Beacon identifies families in financial distress across ACCC's service areas —
-        giving counselors a proactive way to offer help before families reach crisis
-        stage and lose everything.
-      </p>
-
-      <div class="hero-stats">
-        <div>
-          <p class="stat-val">754K+</p>
-          <p class="stat-label">Families identified</p>
+      <h1>Platform Overview &amp;<br><em>Demo Access</em></h1>
+      <p class="header-desc">A summary of what Beacon does, how to navigate it, and how to access the live demo environment.</p>
+    </div>
+    <div class="header-bar">
+      <div class="header-bar-dot"></div>
+      <span class="header-bar-text">Live data &middot; <strong>Updated March 30, 2026</strong></span>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat stat-1"><div class="stat-label">Households Identified</div><div class="stat-value">1,650,288</div><div class="stat-sub">Verified distressed households</div></div>
+    <div class="stat stat-2"><div class="stat-label">States with Coverage</div><div class="stat-value">9</div><div class="stat-sub">Active now &middot; Expanding to all 50 states</div></div>
+    <div class="stat stat-3"><div class="stat-label">Assessed Equity Exposure</div><div class="stat-value">$1.45T</div><div class="stat-sub">Combined assessed value, 1.65M households</div></div>
+    <div class="stat stat-4"><div class="stat-label">Atlas Records</div><div class="stat-value">105M+</div><div class="stat-sub">556+ verified data sources</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">About Beacon</div>
+    <div class="overview">
+      <p>Beacon is a homeowner intelligence platform built on Atlas, Red Planet Data&#39;s national property data engine. It surfaces households showing signs of financial distress &mdash; HMDA loan denials, tax delinquency, high vacancy, and equity signals &mdash; so counselors have a clear picture of who needs help and why.</p>
+      <p>The platform is organized around the counselor&#39;s workflow: review a household, read the outreach briefing, look up contact information, and flag for counseling. All data flows from Atlas &mdash; no manual data entry required.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Demo Videos</div>
+    <div class="video-grid">
+      <a href="https://www.loom.com/share/bf109f5a800a47ecbb36aa0b3499e41c" target="_blank" class="video-card">
+        <div class="video-thumb-static">
+          <div class="play-btn"><div class="play-icon"></div></div>
+          <span class="video-label-text">Watch on Loom</span>
         </div>
-        <div>
-          <p class="stat-val">371K+</p>
-          <p class="stat-label">Need urgent help</p>
+        <div class="video-meta">
+          <div class="video-num">1</div>
+          <div class="video-info"><strong>Platform Overview</strong><span>Dashboard, household list, distress signals</span></div>
+          <span class="video-open-hint">Watch &rarr;</span>
         </div>
-        <div>
-          <p class="stat-val">5</p>
-          <p class="stat-label">States covered</p>
+      </a>
+      <a href="https://www.loom.com/share/a66e5b1116aa4a83975271ff1a6d3bc5" target="_blank" class="video-card">
+        <div class="video-thumb-static">
+          <div class="play-btn"><div class="play-icon"></div></div>
+          <span class="video-label-text">Watch on Loom</span>
         </div>
-        <div>
-          <p class="stat-val">27</p>
-          <p class="stat-label">Distress signals</p>
+        <div class="video-meta">
+          <div class="video-num">2</div>
+          <div class="video-info"><strong>Household Detail</strong><span>Contact lookup, outreach briefing, counselor tools</span></div>
+          <span class="video-open-hint">Watch &rarr;</span>
         </div>
+      </a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">How It Works</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div><h4>Browse the Households list</h4><p>Records are grouped by distress level &mdash; High Need and Monitor. Each row shows the owner name, address, primary distress signal, assessed value, and how long the signal has been active. Filters let you narrow by state, signal type, or equity range.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div><h4>Open a household record</h4><p>The detail page shows full property information, distress indicators with plain-English explanations, an outreach briefing summarizing the situation, and the property&#39;s assessed value and sale history where available.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div><h4>Look up contact information and flag</h4><p>The Look Up Contact button retrieves phone numbers and email addresses via skip trace. From there, flag the household for counseling, assign it to a counselor, and add notes. The activity log tracks all actions taken.</p></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Current Coverage</div>
+    <div class="coverage-grid">
+      <div class="cov-item"><div class="cov-state">NY</div><div class="cov-count">377,304</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">TX</div><div class="cov-count">337,696</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">TN</div><div class="cov-count">280,105</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">AZ</div><div class="cov-count">217,935</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">FL</div><div class="cov-count">140,567</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">CO</div><div class="cov-count">116,221</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">PA</div><div class="cov-count">104,282</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">NJ</div><div class="cov-count">60,000</div><div class="cov-label">households</div></div>
+      <div class="cov-item"><div class="cov-state">GA</div><div class="cov-count">16,178</div><div class="cov-label">households</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Demo Access</div>
+    <div class="access-grid">
+      <div class="access-left">
+        <h3>Live demo environment</h3>
+        <p>Beacon is running on real Atlas data. Explore freely &mdash; contact lookups, outreach briefings, and counselor tools are all active. Feel free to share these credentials with your team.</p>
+        <a href="https://beacon-kohl-one.vercel.app" target="_blank" class="access-link">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          beacon-kohl-one.vercel.app
+        </a>
+      </div>
+      <div>
+        <div class="creds">
+          <div class="cred"><span class="cred-key">Email</span><span class="cred-val">beacon@consumercredit.com</span></div>
+          <div class="cred"><span class="cred-key">Password</span><span class="cred-val">ACCC2026</span></div>
+        </div>
+        <div class="access-note">Nothing in this environment affects any production data. All contact lookups and actions are for demonstration purposes only.</div>
       </div>
     </div>
   </div>
-
-  <!-- ── Content ── -->
-  <div class="content">
-
-    <!-- The Problem -->
-    <div class="section">
-      <p class="section-title">The Problem</p>
-      <h2>Families don't ask for help until it's too late</h2>
-      <p>
-        Most families in financial distress don't contact credit counseling until they've
-        already missed payments, received foreclosure notices, or exhausted their savings.
-        By then, the options are limited and the damage is done. ACCC counselors are
-        highly effective — but they can only help people who walk through the door.
-      </p>
-    </div>
-
-    <!-- What Beacon Does -->
-    <div class="section">
-      <p class="section-title">What Beacon Does</p>
-      <h2>Find the families who need us before they know to ask</h2>
-      <p style="margin-bottom: 20px;">
-        Beacon ingests public records, government data, and economic indicators to
-        build a real-time picture of household financial distress — then surfaces the
-        families who would most benefit from ACCC's counseling services.
-      </p>
-
-      <div class="cards">
-        <div class="card">
-          <div class="card-icon blue">📊</div>
-          <h3>Household Intelligence</h3>
-          <p>
-            Every identified household gets a distress profile built from 27+ public
-            signals — mortgage status, tax delinquency, court filings, employment
-            trends, and more.
-          </p>
-        </div>
-        <div class="card">
-          <div class="card-icon red">🔴</div>
-          <h3>Distress Scoring</h3>
-          <p>
-            Beacon assigns severity levels (Critical, High, Moderate, Low) so counselors
-            can prioritize outreach to families closest to crisis.
-          </p>
-        </div>
-        <div class="card">
-          <div class="card-icon teal">📍</div>
-          <h3>Geographic Coverage</h3>
-          <p>
-            Coverage maps show where Beacon has intelligence and where gaps exist —
-            helping ACCC expand outreach strategically across service areas.
-          </p>
-        </div>
-        <div class="card">
-          <div class="card-icon amber">⚡</div>
-          <h3>Proactive Outreach</h3>
-          <p>
-            Instead of waiting for families to call, counselors can identify at-risk
-            households in their zip codes and reach out before financial collapse.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Distress Signals -->
-    <div class="section">
-      <p class="section-title">Data Foundation</p>
-      <h2>27+ distress signals from public sources</h2>
-      <p style="margin-bottom: 8px;">
-        Beacon aggregates data that's already public but scattered across dozens of
-        government agencies and court systems. No private data is purchased or scraped.
-      </p>
-
-      <div class="signal-grid">
-        <div class="signal-item">
-          <span class="signal-dot red"></span>
-          <span>Mortgage delinquency</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot red"></span>
-          <span>Foreclosure filings</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot red"></span>
-          <span>Tax lien filings</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot amber"></span>
-          <span>Tax delinquency</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot amber"></span>
-          <span>Lis pendens filings</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot amber"></span>
-          <span>Probate court records</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot amber"></span>
-          <span>Code enforcement violations</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot blue"></span>
-          <span>Unemployment claims (area)</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot blue"></span>
-          <span>SNAP/benefits enrollment</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot blue"></span>
-          <span>Medical debt indicators</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot teal"></span>
-          <span>Property value decline</span>
-        </div>
-        <div class="signal-item">
-          <span class="signal-dot teal"></span>
-          <span>Vacancy indicators</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Coverage -->
-    <div class="section">
-      <p class="section-title">Current Coverage</p>
-      <h2>Live in 5 states — expanding quarterly</h2>
-
-      <table class="coverage-table">
-        <thead>
-          <tr>
-            <th>State</th>
-            <th>Households</th>
-            <th>Urgent</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Florida</td>
-            <td class="mono">218,400+</td>
-            <td class="mono">112,000+</td>
-            <td><span class="badge live">Live</span></td>
-          </tr>
-          <tr>
-            <td>Connecticut</td>
-            <td class="mono">164,200+</td>
-            <td class="mono">78,500+</td>
-            <td><span class="badge live">Live</span></td>
-          </tr>
-          <tr>
-            <td>Massachusetts</td>
-            <td class="mono">148,600+</td>
-            <td class="mono">71,200+</td>
-            <td><span class="badge live">Live</span></td>
-          </tr>
-          <tr>
-            <td>New Jersey</td>
-            <td class="mono">124,800+</td>
-            <td class="mono">62,400+</td>
-            <td><span class="badge live">Live</span></td>
-          </tr>
-          <tr>
-            <td>New York</td>
-            <td class="mono">98,000+</td>
-            <td class="mono">46,900+</td>
-            <td><span class="badge live">Live</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Roadmap -->
-    <div class="section">
-      <p class="section-title">Roadmap</p>
-      <h2>What's coming next</h2>
-
-      <div class="timeline">
-        <div class="timeline-item">
-          <p class="phase">Q2 2026</p>
-          <h4>Counselor workflow integration</h4>
-          <p>Direct case assignment from Beacon to ACCC's counselor management system.</p>
-        </div>
-        <div class="timeline-item">
-          <p class="phase">Q2 2026</p>
-          <h4>Outreach campaign tools</h4>
-          <p>Generate targeted mailing lists and outreach templates by zip code and distress type.</p>
-        </div>
-        <div class="timeline-item">
-          <p class="phase">Q3 2026</p>
-          <h4>10-state expansion</h4>
-          <p>Pennsylvania, Ohio, Georgia, Illinois, and Texas among the next wave.</p>
-        </div>
-        <div class="timeline-item">
-          <p class="phase">Q3 2026</p>
-          <h4>Outcome tracking</h4>
-          <p>Measure counseling outcomes against Beacon-identified households to prove ROI.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- How It Works -->
-    <div class="section">
-      <p class="section-title">Technical Architecture</p>
-      <h2>Built on Atlas — 93 million records and growing</h2>
-      <p>
-        Beacon is powered by Atlas, Red Planet Data's core intelligence engine. Atlas
-        ingests data from 500+ government sources, normalizes it at the parcel level,
-        and generates composite distress scores. Beacon is a purpose-built interface
-        that translates Atlas intelligence into counselor-ready workflows for ACCC.
-      </p>
-    </div>
-
-  </div>
-
-  <!-- ── Footer ── -->
   <div class="footer">
-    <p>
-      Built and operated by <strong>Red Planet Data</strong> exclusively for
-      American Consumer Credit Counseling.
-    </p>
-    <p style="margin-top: 8px;">
-      <a href="https://beacon-kohl-one.vercel.app">beacon-kohl-one.vercel.app</a>
-    </p>
+    <span>Red Planet Data &middot; redplanetdata.com</span>
+    <span>March 2026 &middot; Confidential</span>
   </div>
-
+</div>
 </body>
 </html>
