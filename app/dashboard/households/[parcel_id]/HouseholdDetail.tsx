@@ -5,35 +5,24 @@ import Link from 'next/link'
 import type { HouseholdDetail as HouseholdDetailType, Signal } from '@/lib/atlas-api'
 import { ContactLookup } from '@/components/ContactLookup'
 import { StreetView } from '@/components/StreetView'
-import { formatOwnerName, getSeverityBadgeClass, formatMailingAddress } from '@/lib/format-name'
+import { formatOwnerName, formatMailingAddress } from '@/lib/format-name'
 import {
   formatCurrency,
   formatSalePrice,
   formatAddress,
   signalLabel,
-  signalBadgeColor,
+  getSignalBadgeStyle,
+  getHouseholdGroup,
+  sortSignalsBySeverity,
   severityLabel,
   titleCase,
-  getRiskLevel,
 } from '@/lib/format'
 
-type BadgeColor = 'red' | 'amber' | 'teal' | 'blue'
-
-function badgeStyle(color: BadgeColor) {
-  const map = {
-    red: { background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)' },
-    amber: { background: 'var(--badge-amber-bg)', color: 'var(--badge-amber-text)', border: '1px solid var(--badge-amber-border)' },
-    teal: { background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--badge-teal-border)' },
-    blue: { background: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)', border: '1px solid var(--badge-blue-border)' },
-  }
-  return map[color]
-}
-
 function riskBadgeFromSignals(signalCodes: string[]) {
-  const level = getRiskLevel(signalCodes)
-  if (level === 'Urgent') return { label: 'Urgent', ...badgeStyle('red') }
-  if (level === 'High Need') return { label: 'High Need', ...badgeStyle('amber') }
-  return { label: 'Moderate', ...badgeStyle('blue') }
+  const group = getHouseholdGroup(signalCodes.map((c) => ({ type: c, name: c })))
+  if (group === 'critical') return { label: 'Urgent', ...getSignalBadgeStyle('foreclosure', 'foreclosure') }
+  if (group === 'high_need') return { label: 'High Need', ...getSignalBadgeStyle('bankruptcy', 'bankruptcy') }
+  return { label: 'Moderate', ...getSignalBadgeStyle('vacancy', 'vacancy') }
 }
 
 function deriveService(codes: string[]): string {
@@ -159,13 +148,12 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No signals detected</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {h.signal_codes.map((code) => {
-                const color = signalBadgeColor(code)
+              {sortSignalsBySeverity(h.signal_codes).map((code) => {
                 const signal = signals.find((s) => s.code === code)
                 return (
                   <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
-                      ...badgeStyle(color),
+                      ...getSignalBadgeStyle(code, signal?.label || code),
                       fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
                       padding: '2px 8px', borderRadius: 'var(--radius-sm)',
                       textTransform: 'uppercase', whiteSpace: 'nowrap',
@@ -199,14 +187,13 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
               {[...signals]
                 .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())
                 .map((s, i) => {
-                  const sevColor = getSeverityBadgeClass(s.category)
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, width: 72 }}>
                         {new Date(s.detected_at).toLocaleDateString()}
                       </span>
                       <span style={{
-                        ...badgeStyle(sevColor),
+                        ...getSignalBadgeStyle(s.code, s.label || s.category),
                         fontSize: 9, fontWeight: 700, padding: '1px 6px',
                         borderRadius: 'var(--radius-sm)', textTransform: 'uppercase',
                         whiteSpace: 'nowrap', flexShrink: 0,
@@ -222,9 +209,9 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
             </div>
           ) : h.signal_codes.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {h.signal_codes.map((code) => (
+              {sortSignalsBySeverity(h.signal_codes).map((code) => (
                 <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: `var(--accent-${signalBadgeColor(code)})` }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: getSignalBadgeStyle(code, code).color }} />
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{signalLabel(code)}</span>
                 </div>
               ))}

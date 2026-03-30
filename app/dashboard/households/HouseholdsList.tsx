@@ -8,8 +8,9 @@ import {
   formatCurrency,
   formatAddress,
   signalLabel,
-  signalBadgeColor,
-  priorityGroupBySignals,
+  getSignalBadgeStyle,
+  getHouseholdGroup,
+  sortSignalsBySeverity,
   titleCase,
   formatDistressDuration,
 } from '@/lib/format'
@@ -27,15 +28,6 @@ const EQUITY_RANGES = [
   { label: 'Over $1M', min: 1_000_000, max: Infinity },
 ]
 
-function badgeStyle(color: ReturnType<typeof signalBadgeColor>) {
-  const map = {
-    red: { background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)' },
-    amber: { background: 'var(--badge-amber-bg)', color: 'var(--badge-amber-text)', border: '1px solid var(--badge-amber-border)' },
-    teal: { background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--badge-teal-border)' },
-    blue: { background: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)', border: '1px solid var(--badge-blue-border)' },
-  }
-  return map[color]
-}
 
 function isRowFiltered(h: { owner_name: string | null; assessed_value: number | null; estimated_equity: number | null }): boolean {
   if (!h.owner_name) return true
@@ -75,11 +67,16 @@ export function HouseholdsList({ initialHouseholds, schema }: Props) {
     const high: Household[] = []
     const monitor: Household[] = []
     for (const h of filtered) {
-      const g = priorityGroupBySignals(h.signal_codes)
+      const g = getHouseholdGroup(h.signal_codes.map((c) => ({ type: c, name: c })))
       if (g === 'critical') critical.push(h)
-      else if (g === 'high') high.push(h)
+      else if (g === 'high_need') high.push(h)
       else monitor.push(h)
     }
+    // Sort within each group: highest need_score first
+    const byScore = (a: Household, b: Household) => b.compound_score - a.compound_score
+    critical.sort(byScore)
+    high.sort(byScore)
+    monitor.sort(byScore)
     return { critical, high, monitor }
   }, [filtered])
 
@@ -242,10 +239,7 @@ function PriorityGroup({
       >
         <div style={{ width: 3, height: 16, background: accentColor, borderRadius: 0 }} />
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: labelColor }}>
-          {label}
-        </span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
-          {items.length.toLocaleString()}
+          {label} ({items.length.toLocaleString()})
         </span>
         <span style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic' }}>
           {description}
@@ -307,8 +301,9 @@ function HouseholdRow({
   onNavigate: (id: string) => void
 }) {
   const addr = formatAddress(`${titleCase(h.address)}, ${titleCase(h.city)}, ${h.state} ${h.zip}`)
-  const primarySignal = h.signal_codes[0]
-  const extraCount = h.signal_codes.length - 1
+  const sorted = sortSignalsBySeverity(h.signal_codes)
+  const primarySignal = sorted[0]
+  const extraCount = sorted.length - 1
 
   return (
     <div
@@ -338,7 +333,7 @@ function HouseholdRow({
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {primarySignal && (
           <span style={{
-            ...badgeStyle(signalBadgeColor(primarySignal)),
+            ...getSignalBadgeStyle(primarySignal, primarySignal),
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: '0.04em',
