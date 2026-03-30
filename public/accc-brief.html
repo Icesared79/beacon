@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Beacon — ACCC Overview</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -15,7 +15,7 @@
     --surface: #ffffff; --bg: #f1f5f9; --border: #e2e8f0;
     --text: #0f172a; --text-2: #475569; --text-3: #94a3b8;
   }
-  body { font-family: "DM Sans", sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; padding: 36px 20px 80px; }
+  body { font-family: "DM Sans", sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; padding: 36px 20px 80px; min-height: 100vh; width: 100%; }
   .page { max-width: 860px; margin: 0 auto; }
   .header { background: var(--navy); border-radius: 16px; overflow: hidden; margin-bottom: 16px; position: relative; }
   .header-accent { position: absolute; top: 0; right: 0; width: 320px; height: 100%; background: linear-gradient(135deg, transparent 40%, rgba(37,99,235,0.12) 100%); pointer-events: none; }
@@ -82,14 +82,22 @@
   .access-note { margin-top: 10px; font-size: 12px; color: var(--text-3); line-height: 1.7; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; }
   .footer { margin-top: 28px; padding: 0 4px; display: flex; justify-content: space-between; align-items: center; }
   .footer span { font-size: 12px; color: var(--text-3); }
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .access-grid { grid-template-columns: 1fr; }
+  }
   @media (max-width: 640px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
     .video-grid, .access-grid { grid-template-columns: 1fr; }
     .coverage-grid { grid-template-columns: repeat(3, 1fr); }
     .header h1 { font-size: 26px; }
-    .header-inner { padding: 28px 24px; }
-    .header-bar { padding: 14px 24px; }
-    .card { padding: 24px 20px; }
+    .header-inner { padding: 24px 20px; }
+    .header-bar { padding: 12px 20px; }
+    .card { padding: 20px 16px; }
+    body { padding: 20px 16px 60px; }
+    .step { padding: 14px 16px; }
+    .cov-item { padding: 10px 12px; }
+    .cred { padding: 10px 12px; }
   }
 </style>
 </head>
@@ -127,26 +135,27 @@
   </div>
   <div class="card">
     <div class="card-title">Demo Videos</div>
+    <p style="font-size: 14px; color: var(--text-2); line-height: 1.7; margin-bottom: 20px; font-weight: 300;">The first video walks through the Beacon platform &mdash; what a counselor sees and does. The second covers Atlas, the underlying data engine that powers Beacon&rsquo;s intelligence.</p>
     <div class="video-grid">
-      <a href="https://www.loom.com/share/bf109f5a800a47ecbb36aa0b3499e41c" target="_blank" class="video-card">
-        <div class="video-thumb-static">
-          <div class="play-btn"><div class="play-icon"></div></div>
-          <span class="video-label-text">Watch on Loom</span>
-        </div>
-        <div class="video-meta">
-          <div class="video-num">1</div>
-          <div class="video-info"><strong>Platform Overview</strong><span>Dashboard, household list, distress signals</span></div>
-          <span class="video-open-hint">Watch &rarr;</span>
-        </div>
-      </a>
       <a href="https://www.loom.com/share/a66e5b1116aa4a83975271ff1a6d3bc5" target="_blank" class="video-card">
         <div class="video-thumb-static">
           <div class="play-btn"><div class="play-icon"></div></div>
           <span class="video-label-text">Watch on Loom</span>
         </div>
         <div class="video-meta">
+          <div class="video-num">1</div>
+          <div class="video-info"><strong>Beacon Platform Demo</strong><span>Households, outreach briefing, contact lookup</span></div>
+          <span class="video-open-hint">Watch &rarr;</span>
+        </div>
+      </a>
+      <a href="https://www.loom.com/share/bf109f5a800a47ecbb36aa0b3499e41c" target="_blank" class="video-card">
+        <div class="video-thumb-static">
+          <div class="play-btn"><div class="play-icon"></div></div>
+          <span class="video-label-text">Watch on Loom</span>
+        </div>
+        <div class="video-meta">
           <div class="video-num">2</div>
-          <div class="video-info"><strong>Household Detail</strong><span>Contact lookup, outreach briefing, counselor tools</span></div>
+          <div class="video-info"><strong>Atlas Data Engine</strong><span>The national property intelligence platform powering Beacon</span></div>
           <span class="video-open-hint">Watch &rarr;</span>
         </div>
       </a>
