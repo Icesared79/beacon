@@ -246,7 +246,19 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
       </div>
 
-      {/* 5. Contact Information */}
+      {/* 5. Outreach Briefing */}
+      <OutreachBriefing
+        signalCodes={h.signal_codes}
+        signals={signals}
+        yearsHeld={yearsHeld}
+        estimatedEquity={h.estimated_equity}
+        lastSalePrice={h.last_sale_price}
+        serviceCategory={h.suggested_service || deriveService(h.signal_codes)}
+        compoundScore={h.compound_score}
+        firstSignalDate={h.first_signal_date}
+      />
+
+      {/* 6. Contact Information (was 5) */}
       <div style={{ ...panel, marginBottom: 16 }}>
         <div style={sectionLabel}>Contact Information</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -280,7 +292,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
       </div>
 
-      {/* 6. Counselor Notes */}
+      {/* 7. Counselor Notes */}
       <div style={{ ...panel, marginBottom: 12 }}>
         <div style={sectionLabel}>Counselor Notes</div>
         {savedNotes.length > 0 ? (
@@ -322,7 +334,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </button>
       </div>
 
-      {/* 7. Status / Counselor / Flag row */}
+      {/* 8. Status / Counselor / Flag row */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 12, alignItems: 'end',
         background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
@@ -360,7 +372,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         </div>
       </div>
 
-      {/* 8. Activity Log */}
+      {/* 9. Activity Log */}
       <div style={panel}>
         <div style={sectionLabel}>Activity Log</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
@@ -522,6 +534,313 @@ function OutreachIntelligence({
         }}>
           {serviceCategory || 'Credit Counseling'}
         </span>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Outreach Briefing Panel ─── */
+
+const SIGNAL_NAMES: Record<string, string> = {
+  hmda_loan_denial: 'HMDA Loan Denial',
+  distress_flagged: 'Distress Flagged',
+  high_vacancy: 'High Vacancy',
+  high_equity_confirmed: 'High Equity Confirmed',
+  long_hold_confirmed: 'Long Hold Confirmed',
+}
+
+const SIGNAL_DESCRIPTIONS: Record<string, string> = {
+  hmda_loan_denial:
+    'Homeowner applied for a mortgage or refinance and was denied. May indicate credit issues, income documentation problems, or predatory lending patterns.',
+  distress_flagged:
+    'Multiple overlapping distress signals detected. This household shows compound indicators of financial hardship.',
+  high_vacancy:
+    'Property shows signs of vacancy or abandonment based on utility and occupancy data.',
+  high_equity_confirmed:
+    'Property has significant assessed equity with no active mortgage on record. Owner may be equity-rich but cash-poor.',
+  long_hold_confirmed:
+    'Homeowner has held this property for an extended period without a recorded sale or transfer. Indicates strong attachment to the home.',
+}
+
+const SIGNAL_DOT_COLORS: Record<string, string> = {
+  distress_flagged: '#ef4444',
+  hmda_loan_denial: '#f59e0b',
+  high_vacancy: '#3b82f6',
+  high_equity_confirmed: '#10b981',
+  long_hold_confirmed: '#10b981',
+}
+
+const SIGNAL_SORT_ORDER: Record<string, number> = {
+  distress_flagged: 0,
+  hmda_loan_denial: 1,
+  high_vacancy: 2,
+}
+
+function deriveSituation(codes: string[]): { value: string; sub: string } {
+  if (codes.includes('distress_flagged'))
+    return {
+      value: 'Active distress signal detected',
+      sub: 'Multiple overlapping distress signals detected on this property.',
+    }
+  if (codes.includes('hmda_loan_denial'))
+    return {
+      value: 'Mortgage application denied',
+      sub: 'HMDA denial on file. Homeowner attempted to access credit and was turned down.',
+    }
+  if (codes.includes('high_vacancy'))
+    return {
+      value: 'Vacant or abandoned property',
+      sub: 'Property shows signs of vacancy or abandonment.',
+    }
+  return { value: 'Distress indicators present', sub: 'See signal detail below.' }
+}
+
+function deriveServiceSub(category: string): string {
+  switch (category) {
+    case 'Credit Counseling':
+      return 'Based on HMDA denial pattern and equity position'
+    case 'Debt Management Program':
+    case 'Debt Management':
+      return 'Based on tax delinquency or foreclosure signals'
+    case 'Bankruptcy Counseling':
+      return 'Based on bankruptcy filing indicators'
+    case 'Housing Counseling':
+      return 'Based on probate or ownership signals'
+    default:
+      return 'Based on active distress signals'
+  }
+}
+
+function OutreachBriefing({
+  signalCodes,
+  signals,
+  yearsHeld,
+  estimatedEquity,
+  lastSalePrice,
+  serviceCategory,
+  compoundScore,
+  firstSignalDate,
+}: {
+  signalCodes: string[]
+  signals: Signal[]
+  yearsHeld: number | null
+  estimatedEquity: number | null
+  lastSalePrice: number | null
+  serviceCategory: string
+  compoundScore: number
+  firstSignalDate: string | null
+}) {
+  const situation = deriveSituation(signalCodes)
+
+  // Household context
+  const equityStatus =
+    estimatedEquity != null && estimatedEquity > 100000
+      ? 'high equity'
+      : estimatedEquity != null && estimatedEquity > 0
+        ? 'some equity'
+        : 'equity unknown'
+
+  let contextValue: string
+  if (yearsHeld != null && yearsHeld > 10) contextValue = `Long-term owner, ${equityStatus}`
+  else if (yearsHeld != null && yearsHeld > 0) contextValue = `Owner since ${new Date().getFullYear() - yearsHeld}, ${equityStatus}`
+  else contextValue = equityStatus.charAt(0).toUpperCase() + equityStatus.slice(1)
+
+  const contextSubParts: string[] = []
+  if (yearsHeld != null) contextSubParts.push(`In property ${yearsHeld} years`)
+  if (estimatedEquity != null) contextSubParts.push(`$${estimatedEquity.toLocaleString()} equity`)
+  else contextSubParts.push('Equity unknown')
+  if (lastSalePrice != null && lastSalePrice > 0) contextSubParts.push(`Last sale $${lastSalePrice.toLocaleString()}`)
+  else contextSubParts.push('No recorded sale')
+  const contextSub = contextSubParts.join(' · ')
+
+  // Signal detail sorted
+  const sortedCodes = [...signalCodes].sort((a, b) => {
+    const oa = SIGNAL_SORT_ORDER[a] ?? 99
+    const ob = SIGNAL_SORT_ORDER[b] ?? 99
+    return oa - ob
+  })
+
+  const currentYear = new Date().getFullYear()
+
+  const cardStyle = (borderColor: string): React.CSSProperties => ({
+    background: 'var(--bg-elevated)',
+    borderRadius: '0 6px 6px 0',
+    borderLeft: `3px solid ${borderColor}`,
+    padding: '14px 16px',
+  })
+
+  const cardLabel = (color: string): React.CSSProperties => ({
+    fontSize: 9,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontWeight: 700,
+    marginBottom: 6,
+    color,
+  })
+
+  const cardValue: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 500,
+    color: 'var(--text-primary)',
+    lineHeight: 1.5,
+  }
+
+  const cardSub: React.CSSProperties = {
+    fontSize: 11,
+    color: 'var(--text-secondary)',
+    marginTop: 4,
+    lineHeight: 1.4,
+  }
+
+  return (
+    <div
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '20px 24px',
+        marginBottom: 12,
+      }}
+    >
+      <div style={sectionLabel}>Outreach Briefing</div>
+
+      {/* Top Row — Three cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+        {/* Situation */}
+        <div style={cardStyle('var(--accent-amber)')}>
+          <div style={cardLabel('var(--accent-amber-text)')}>Situation</div>
+          <div style={cardValue}>{situation.value}</div>
+          <div style={cardSub}>{situation.sub}</div>
+        </div>
+
+        {/* Household Context */}
+        <div style={cardStyle('var(--accent-blue)')}>
+          <div style={cardLabel('var(--accent-blue-text)')}>Household Context</div>
+          <div style={cardValue}>{contextValue}</div>
+          <div style={cardSub}>{contextSub}</div>
+        </div>
+
+        {/* Relevant Service */}
+        <div style={cardStyle('var(--accent-teal)')}>
+          <div style={cardLabel('var(--accent-teal-text)')}>Relevant Service</div>
+          <div style={cardValue}>{serviceCategory}</div>
+          <div style={cardSub}>{deriveServiceSub(serviceCategory)}</div>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div style={{ borderTop: '0.5px solid var(--border-subtle)', margin: '16px 0' }} />
+
+      {/* Signal Detail */}
+      <div style={sectionLabel}>Signal Detail</div>
+      {sortedCodes.length === 0 ? (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+          No signals on record
+        </div>
+      ) : (
+        sortedCodes.map((code) => {
+          const sig = signals.find((s) => s.code === code)
+          const dotColor = SIGNAL_DOT_COLORS[code] || 'var(--text-muted)'
+          const name = SIGNAL_NAMES[code] || signalLabel(code)
+          const desc = SIGNAL_DESCRIPTIONS[code] || ''
+          const detectedAt = sig?.detected_at
+            ? `Detected ${new Date(sig.detected_at).toLocaleDateString()}`
+            : firstSignalDate
+              ? `Detected ${new Date(firstSignalDate).toLocaleDateString()}`
+              : null
+
+          return (
+            <div
+              key={code}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                background: 'var(--bg-elevated)',
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 12px',
+                marginBottom: 8,
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: dotColor,
+                  marginTop: 3,
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                  {name}
+                </div>
+                {desc && (
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    {desc}
+                  </div>
+                )}
+                {detectedAt && (
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {detectedAt}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })
+      )}
+
+      {/* Equity Callout Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--bg-elevated)',
+          borderRadius: 'var(--radius-md)',
+          padding: '12px 16px',
+          marginTop: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            Equity at Stake
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+            {estimatedEquity != null ? `$${estimatedEquity.toLocaleString()}` : '—'}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            Based on assessed value
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            Years in Property
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+            {yearsHeld != null ? `${yearsHeld} years` : 'Unknown'}
+          </div>
+          {yearsHeld != null && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+              Since {currentYear - yearsHeld}
+            </div>
+          )}
+        </div>
+
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            Need Score
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+            {compoundScore}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            {compoundScore > 100 ? 'Above average distress threshold' : 'Moderate distress indicators'}
+          </div>
+        </div>
       </div>
     </div>
   )
