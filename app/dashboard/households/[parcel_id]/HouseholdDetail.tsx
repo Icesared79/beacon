@@ -8,13 +8,11 @@ import { StreetView } from '@/components/StreetView'
 import { formatOwnerName, formatMailingAddress } from '@/lib/format-name'
 import {
   formatCurrency,
-  formatSalePrice,
   formatAddress,
   signalLabel,
   getSignalBadgeStyle,
   getHouseholdGroup,
   sortSignalsBySeverity,
-  severityLabel,
   titleCase,
 } from '@/lib/format'
 
@@ -85,7 +83,6 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
 
   const hasSalePrice = h.last_sale_price != null && h.last_sale_price > 1
   const assessedValue = h.assessed_value ?? 0
-  const currentYear = new Date().getFullYear()
 
   const firstDate = h.first_signal_date ? new Date(h.first_signal_date).toLocaleDateString() : null
   const lastSignalDate = signals.length > 0
@@ -254,7 +251,7 @@ export function HouseholdDetail({ household: h }: { household: HouseholdDetailTy
         firstSignalDate={h.first_signal_date}
       />
 
-      {/* 6. Contact Information (was 5) */}
+      {/* 6. Contact Information */}
       <div style={{ ...panel, marginBottom: 16 }}>
         <div style={sectionLabel}>Contact Information</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -429,11 +426,9 @@ function OutreachIntelligence({
   }
   const config = riskConfig[riskLevel]
 
-  // Use signals array if available, fall back to signalCodes
   const allSignals = signals.length > 0
     ? signals.map((s) => s.code)
     : signalCodes
-  const signalCount = allSignals.length
 
   const barWidth = Math.min((needScore / 200) * 100, 100)
 
@@ -443,7 +438,6 @@ function OutreachIntelligence({
         Outreach Intelligence
       </div>
 
-      {/* Score Drivers */}
       <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: 10 }}>
         Score Drivers
       </div>
@@ -476,10 +470,8 @@ function OutreachIntelligence({
         </div>
       )}
 
-      {/* Divider */}
       <div style={{ borderTop: '0.5px solid var(--border-subtle)', margin: '16px 0' }} />
 
-      {/* Need Score */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>Need Score</span>
         <div style={{ flex: 1, margin: '0 12px', height: 4, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
@@ -493,7 +485,6 @@ function OutreachIntelligence({
         </span>
       </div>
 
-      {/* Recommended Service */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
         <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Recommended Service</span>
         <span style={{
@@ -573,7 +564,7 @@ function deriveSituation(codes: string[]): { value: string; sub: string } {
 function deriveServiceSub(category: string): string {
   switch (category) {
     case 'Credit Counseling':
-      return 'Based on HMDA denial pattern and equity position'
+      return 'Based on HMDA denial pattern and property profile'
     case 'Debt Management Program':
     case 'Debt Management':
       return 'Based on tax delinquency or foreclosure signals'
@@ -608,16 +599,15 @@ function OutreachBriefing({
   firstSignalDate: string | null
 }) {
   const situation = deriveSituation(signalCodes)
-  const hasSalePrice = lastSalePrice != null && lastSalePrice > 1
+  const hasSale = lastSalePrice != null && lastSalePrice > 1
 
-  // Household context — honest display based on available data
   let contextValue: string
   let contextSub: string
 
-  if (hasSalePrice && yearsHeld != null && yearsHeld > 0) {
-    const year = new Date().getFullYear() - yearsHeld
-    contextValue = `Owner since ${year} · $${assessedValue.toLocaleString()} assessed`
-    contextSub = `Purchased for $${lastSalePrice.toLocaleString()} · ${yearsHeld} years in property`
+  if (hasSale && yearsHeld != null && yearsHeld > 0) {
+    const sinceYear = new Date().getFullYear() - yearsHeld
+    contextValue = `Owner since ${sinceYear} · $${assessedValue.toLocaleString()} assessed`
+    contextSub = `Purchased for $${lastSalePrice!.toLocaleString()} · ${yearsHeld} years in property`
   } else if (yearsHeld != null && yearsHeld > 0) {
     contextValue = `${yearsHeld}-year owner`
     contextSub = `Assessed at $${assessedValue.toLocaleString()} · No sale price on record`
@@ -626,7 +616,6 @@ function OutreachBriefing({
     contextSub = `Assessed at $${assessedValue.toLocaleString()} · No transaction history on record`
   }
 
-  // Signal detail sorted
   const sortedCodes = [...signalCodes].sort((a, b) => {
     const oa = SIGNAL_SORT_ORDER[a] ?? 99
     const ob = SIGNAL_SORT_ORDER[b] ?? 99
@@ -677,23 +666,19 @@ function OutreachBriefing({
     >
       <div style={sectionLabel}>Outreach Briefing</div>
 
-      {/* Top Row — Three cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-        {/* Situation */}
         <div style={cardStyle('var(--accent-amber)')}>
           <div style={cardLabel('var(--accent-amber-text)')}>Situation</div>
           <div style={cardValue}>{situation.value}</div>
           <div style={cardSub}>{situation.sub}</div>
         </div>
 
-        {/* Household Context */}
         <div style={cardStyle('var(--accent-blue)')}>
           <div style={cardLabel('var(--accent-blue-text)')}>Household Context</div>
           <div style={cardValue}>{contextValue}</div>
           <div style={cardSub}>{contextSub}</div>
         </div>
 
-        {/* Relevant Service */}
         <div style={cardStyle('var(--accent-teal)')}>
           <div style={cardLabel('var(--accent-teal-text)')}>Relevant Service</div>
           <div style={cardValue}>{serviceCategory}</div>
@@ -701,10 +686,8 @@ function OutreachBriefing({
         </div>
       </div>
 
-      {/* Divider */}
       <div style={{ borderTop: '0.5px solid var(--border-subtle)', margin: '16px 0' }} />
 
-      {/* Signal Detail */}
       <div style={sectionLabel}>Signal Detail</div>
       {sortedCodes.length === 0 ? (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
@@ -768,9 +751,9 @@ function OutreachBriefing({
       {/* Callout Bar */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           background: 'var(--bg-elevated)',
           borderRadius: 'var(--radius-md)',
           padding: '12px 16px',
@@ -778,8 +761,8 @@ function OutreachBriefing({
         }}
       >
         <div>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
-            Assessed Value
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            ASSESSED VALUE
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
             ${assessedValue.toLocaleString()}
@@ -790,27 +773,33 @@ function OutreachBriefing({
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
-            Last Sale Price
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            LAST SALE PRICE
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-            {hasSalePrice ? `$${lastSalePrice!.toLocaleString()}` : 'No record on file'}
+            {hasSale ? `$${lastSalePrice!.toLocaleString()}` : 'No record on file'}
           </div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-            {lastSaleDate ? new Date(lastSaleDate).toLocaleDateString() : 'Date unknown'}
+            {hasSale && lastSaleDate
+              ? new Date(lastSaleDate).toLocaleDateString()
+              : hasSale
+                ? 'Date unknown'
+                : '\u00A0'}
           </div>
         </div>
 
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
-            Years in Property
+          <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            YEARS IN PROPERTY
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
             {yearsHeld != null ? `${yearsHeld} years` : 'Unknown'}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-            {yearsHeld != null ? `Since ${currentYear - yearsHeld}` : ''}
-          </div>
+          {yearsHeld != null && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+              Since {currentYear - yearsHeld}
+            </div>
+          )}
         </div>
       </div>
     </div>
