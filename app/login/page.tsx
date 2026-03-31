@@ -50,7 +50,13 @@ export default function LoginPage() {
         className="hidden lg:flex"
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#60a5fa', display: 'inline-block' }} />
+          <img
+            src="/beacon-logo.svg"
+            alt="Beacon"
+            width={36}
+            height={36}
+            style={{ borderRadius: '8px' }}
+          />
           <div>
             <p style={{ color: '#fff', fontWeight: 600, fontSize: 18, letterSpacing: '0.02em' }}>Beacon</p>
             <p style={{ color: '#93c5fd', fontSize: 12 }}>by American Consumer Credit Counseling</p>
@@ -89,7 +95,13 @@ export default function LoginPage() {
         <div style={{ width: '100%', maxWidth: 400 }}>
           {/* Mobile logo */}
           <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 40 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)' }} />
+            <img
+              src="/beacon-logo.svg"
+              alt="Beacon"
+              width={36}
+              height={36}
+              style={{ borderRadius: '8px' }}
+            />
             <div>
               <p style={{ color: 'var(--accent-blue-text)', fontWeight: 600, fontSize: 16 }}>Beacon</p>
               <p style={{ color: 'var(--text-muted)', fontSize: 11 }}>by American Consumer Credit Counseling</p>

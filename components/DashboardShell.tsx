@@ -50,21 +50,20 @@ export function DashboardShell({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'var(--accent-blue)',
-                display: 'inline-block',
-              }}
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <img
+              src="/beacon-logo.svg"
+              alt="Beacon"
+              width={28}
+              height={28}
+              style={{ borderRadius: '6px' }}
             />
             <span
               style={{
-                fontSize: 15,
+                fontSize: '15px',
                 fontWeight: 700,
-                letterSpacing: '0.02em',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
                 color: 'var(--text-primary)',
               }}
             >
