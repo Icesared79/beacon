@@ -1,17 +1,15 @@
-import { fetchHouseholds, fetchSchema, fetchStats } from '@/lib/atlas-api'
-import { DashboardShell } from '@/components/DashboardShell'
-import { HouseholdsList } from './HouseholdsList'
+// Standalone Beacon V2 retired 2026-05-01 — see /app/dashboard/page.tsx.
+export const dynamic = "force-static";
 
-export default async function HouseholdsPage() {
-  const [{ households }, schema, stats] = await Promise.all([
-    fetchHouseholds({ limit: 500 }),
-    fetchSchema(),
-    fetchStats(),
-  ])
-
+export default function HouseholdsStub() {
   return (
-    <DashboardShell lastUpdated={stats.last_updated}>
-      <HouseholdsList initialHouseholds={households} schema={schema} />
-    </DashboardShell>
-  )
+    <div style={{ padding: 40, fontFamily: "system-ui" }}>
+      <h1>Beacon has moved</h1>
+      <p>
+        <a href="https://atlas.redplanetdata.com/beacon/households">
+          atlas.redplanetdata.com/beacon/households
+        </a>
+      </p>
+    </div>
+  );
 }
